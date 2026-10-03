@@ -1,0 +1,6 @@
+target_id,designation,ra_deg,dec_deg,purpose
+target_01,2M05351344-0523402,83.806016,-5.394502,Orion candidate
+target_02,2M05352004-0525375,83.833500,-5.427083,Orion comparison
+target_03,2M05351427-0524246,83.809458,-5.406833,Orion comparison
+omc23_field_01,OMC2_3_field_01,83.854167,-5.172778,OMC-2/3 context field
+m45_merope_01,IC349_Merope,56.588750,23.941110,External morphology validation
