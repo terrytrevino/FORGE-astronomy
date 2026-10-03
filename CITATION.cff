@@ -1,0 +1,13 @@
+cff-version: 1.2.0
+message: "If you use FORGE Astronomy, please cite the software and associated publication when available."
+title: "FORGE Astronomy"
+type: software
+authors:
+  - family-names: "Trevino"
+    given-names: "D. Terry"
+  - family-names: "Hom"
+    given-names: "Vivian"
+abstract: "A coordinate-driven workflow for archival observation discovery and reproducible astronomical analysis."
+repository-code: "https://github.com/terrytrevino/FORGE-astronomy"
+license: "LicenseRef-Pending"
+version: "0.1.0-dev"
