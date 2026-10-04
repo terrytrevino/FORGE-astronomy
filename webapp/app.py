@@ -12,6 +12,7 @@ from astroquery.skyview import SkyView
 from storage import Storage, StorageConfig
 from archive_discovery import discover_archives, get_mast_preview_products
 from suggested_targets import suggest_compact_stars, suggest_morphology_regions
+from spectroscopy import fetch_sdss_spectrum, spectrum_dataframe, spectrum_figure
 
 st.set_page_config(page_title="FORGE Orion", layout="wide")
 
@@ -349,6 +350,54 @@ if st.button("Show MAST previews"):
 
 
 st.divider()
+
+st.subheader("Spectroscopy")
+st.caption("Plot an SDSS spectrum when one exists, or use a known demo spectrum to verify the visualization path.")
+
+spec_col1, spec_col2 = st.columns(2)
+
+with spec_col1:
+    show_lines = st.checkbox("Show common line markers", value=True)
+    if st.button("Plot spectrum for current target"):
+        with st.spinner("Checking SDSS spectroscopy..."):
+            wave, flux, meta = fetch_sdss_spectrum(ra, dec, radius_arcsec=5.0)
+            if wave is None:
+                st.info(str(meta))
+            else:
+                fig = spectrum_figure(wave, flux, show_lines=show_lines)
+                st.pyplot(fig, use_container_width=True)
+                st.json(meta)
+                sdf = spectrum_dataframe(wave, flux)
+                st.download_button(
+                    "Download spectrum CSV",
+                    sdf.to_csv(index=False).encode("utf-8"),
+                    file_name=f"{name}_sdss_spectrum.csv",
+                    mime="text/csv",
+                )
+
+with spec_col2:
+    st.markdown("**Known SDSS demo spectrum**")
+    st.caption("Use this to verify that FORGE can retrieve and graph a real SDSS spectrum even when the current target has no SDSS spectrum.")
+    if st.button("Load demo SDSS spectrum"):
+        demo_ra = 2.02344596573482
+        demo_dec = 14.8398237551311
+        with st.spinner("Loading known SDSS demo spectrum..."):
+            wave, flux, meta = fetch_sdss_spectrum(demo_ra, demo_dec, radius_arcsec=5.0)
+            if wave is None:
+                st.error(str(meta))
+            else:
+                fig = spectrum_figure(wave, flux, show_lines=show_lines)
+                st.pyplot(fig, use_container_width=True)
+                st.json(meta)
+                sdf = spectrum_dataframe(wave, flux)
+                st.download_button(
+                    "Download demo spectrum CSV",
+                    sdf.to_csv(index=False).encode("utf-8"),
+                    file_name="forge_sdss_demo_spectrum.csv",
+                    mime="text/csv",
+                )
+
+st.divider()
 st.subheader("Multi-band Analysis")
 
 if st.button("Acquire + Analyze", type="primary"):
@@ -470,5 +519,5 @@ if st.button("Acquire + Analyze", type="primary"):
 
 st.divider()
 st.caption(
-    "FORGE web app v0.5 — persistent target library + suggested targets + archive discovery."
+    "FORGE web app v0.6 — student-ready spectroscopy + persistent targets + archive discovery."
 )
