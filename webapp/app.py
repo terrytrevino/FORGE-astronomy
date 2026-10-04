@@ -10,7 +10,7 @@ import astropy.units as u
 from astroquery.skyview import SkyView
 
 from storage import Storage, StorageConfig
-from archive_discovery import discover_archives
+from archive_discovery import discover_archives, get_mast_preview_products
 
 st.set_page_config(page_title="FORGE Orion", layout="wide")
 
@@ -216,6 +216,45 @@ if st.button("Discover archives", type="secondary"):
             st.error(f"Archive discovery failed: {exc}")
 
 
+st.subheader("MAST Preview Products")
+st.caption("Load a few representative public quick-look products from MAST.")
+
+if st.button("Show MAST previews"):
+    with st.spinner("Loading representative MAST previews..."):
+        try:
+            previews = get_mast_preview_products(ra, dec, discovery_radius)
+
+            if not previews:
+                st.info("No MAST quick-look JPG/PNG preview products were found for this coordinate.")
+            else:
+                pcols = st.columns(min(3, len(previews)))
+
+                for i, item in enumerate(previews):
+                    col = pcols[i % len(pcols)]
+                    uri = item["dataURI"]
+                    download_url = (
+                        "https://mast.stsci.edu/api/v0.1/Download/file?uri="
+                        + requests.utils.quote(uri, safe=":")
+                    )
+
+                    try:
+                        rr = requests.get(download_url, timeout=60)
+                        rr.raise_for_status()
+                        img = Image.open(io.BytesIO(rr.content))
+                        col.image(
+                            img,
+                            caption=item.get("filename", "MAST preview"),
+                            use_container_width=True,
+                        )
+                    except Exception as exc:
+                        col.warning(
+                            f"Preview unavailable: {item.get('filename', 'unknown')}"
+                        )
+
+        except Exception as exc:
+            st.error(f"MAST preview lookup failed: {exc}")
+
+
 st.divider()
 st.subheader("Multi-band Analysis")
 
@@ -338,5 +377,5 @@ if st.button("Acquire + Analyze", type="primary"):
 
 st.divider()
 st.caption(
-    "FORGE web app v0.3 — archive discovery + portable storage + multi-band analysis."
+    "FORGE web app v0.3.1 — archive discovery + MAST previews + portable storage + multi-band analysis."
 )
