@@ -17,7 +17,6 @@ from spectroscopy import fetch_sdss_spectrum, spectrum_dataframe, spectrum_figur
 st.set_page_config(page_title="FORGE Orion", layout="wide")
 
 
-def apply_forge_theme():
     st.markdown(
         """
         <style>
@@ -204,8 +203,34 @@ def build_storage(backend, bucket, prefix):
     )
 
 
-st.title("FORGE Astronomy")
-st.caption("Field Observation, Retrieval, Generation, and Evaluation — multi-wavelength archive discovery and analysis")
+
+st.markdown(
+    """
+    <div style="
+        padding: 2.2rem 2.4rem 2rem 2.4rem;
+        border-radius: 22px;
+        margin-bottom: 1.2rem;
+        border: 1px solid rgba(140,170,255,0.18);
+        background:
+            radial-gradient(circle at 18% 35%, rgba(100,120,255,0.24), transparent 24%),
+            radial-gradient(circle at 78% 28%, rgba(130,80,220,0.20), transparent 26%),
+            radial-gradient(circle at 58% 82%, rgba(70,150,255,0.14), transparent 30%),
+            linear-gradient(135deg, #09111d 0%, #0c1b30 55%, #111827 100%);
+    ">
+      <div style="font-size:2.3rem;font-weight:700;color:#f3f7fb;margin-bottom:0.35rem;">
+        FORGE Astronomy
+      </div>
+      <div style="font-size:1.02rem;color:#c8d3e3;margin-bottom:0.75rem;">
+        Field Observation, Retrieval, Generation, and Evaluation
+      </div>
+      <div style="font-size:0.95rem;color:#9fb2cc;max-width:900px;">
+        Multi-wavelength archive discovery, target selection, spectroscopy, morphology,
+        and reproducible astronomical analysis.
+      </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 with st.sidebar:
     st.header("Storage")
