@@ -21,15 +21,19 @@ def apply_forge_theme():
     st.markdown(
         """
         <style>
-        .stApp {
+        html, body, [data-testid="stAppViewContainer"], .stApp {
             background:
-                radial-gradient(circle at 18% 22%, rgba(90,110,255,0.16) 0%, rgba(90,110,255,0.00) 18%),
-                radial-gradient(circle at 78% 30%, rgba(120,70,220,0.14) 0%, rgba(120,70,220,0.00) 20%),
-                radial-gradient(circle at 62% 70%, rgba(70,140,255,0.10) 0%, rgba(70,140,255,0.00) 22%),
-                radial-gradient(circle at 35% 78%, rgba(180,90,120,0.10) 0%, rgba(180,90,120,0.00) 18%),
-                linear-gradient(180deg, #06101b 0%, #081423 35%, #091827 100%);
-            background-attachment: fixed;
-            color: #e8eef7;
+                radial-gradient(circle at 18% 22%, rgba(90,110,255,0.24) 0%, rgba(90,110,255,0.00) 20%),
+                radial-gradient(circle at 78% 30%, rgba(120,70,220,0.22) 0%, rgba(120,70,220,0.00) 22%),
+                radial-gradient(circle at 62% 70%, rgba(70,140,255,0.18) 0%, rgba(70,140,255,0.00) 24%),
+                radial-gradient(circle at 35% 78%, rgba(180,90,120,0.16) 0%, rgba(180,90,120,0.00) 20%),
+                linear-gradient(180deg, #06101b 0%, #081423 35%, #091827 100%) !important;
+            background-attachment: fixed !important;
+            color: #e8eef7 !important;
+        }
+
+        [data-testid="stAppViewContainer"] > .main {
+            background: transparent !important;
         }
 
         .block-container {
