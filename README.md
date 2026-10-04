@@ -269,6 +269,11 @@ The goal is not merely to produce an attractive image or plot, but to make the p
 
 **FORGE was developed by D. Terry Trevino and Vivian Hom.**
 
+## Contributors
+
+- **D. Terry Trevino** — co-developer; project architecture, astronomy workflow, systems integration, analysis design, and scientific interpretation
+- **Vivian Hom** — co-developer; astronomy workflow development, testing, analysis, validation, and scientific interpretation
+
 The project has used ChatGPT (OpenAI) for coding assistance, debugging, workflow design, analysis support, documentation, and presentation drafting. Scientific decisions, interpretation, validation, and authorship remain with the human investigators.
 
 ## Public repository
