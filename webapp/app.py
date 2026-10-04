@@ -17,7 +17,7 @@ from spectroscopy import fetch_sdss_spectrum, spectrum_dataframe, spectrum_figur
 st.set_page_config(page_title="FORGE Orion", layout="wide")
 
 
-    st.markdown(
+st.markdown(
         """
         <style>
         html, body, [data-testid="stAppViewContainer"], .stApp {
