@@ -16,6 +16,64 @@ from spectroscopy import fetch_sdss_spectrum, spectrum_dataframe, spectrum_figur
 
 st.set_page_config(page_title="FORGE Orion", layout="wide")
 
+
+def apply_forge_theme():
+    st.markdown(
+        """
+        <style>
+        .stApp {
+            background:
+                radial-gradient(circle at 18% 22%, rgba(90,110,255,0.16) 0%, rgba(90,110,255,0.00) 18%),
+                radial-gradient(circle at 78% 30%, rgba(120,70,220,0.14) 0%, rgba(120,70,220,0.00) 20%),
+                radial-gradient(circle at 62% 70%, rgba(70,140,255,0.10) 0%, rgba(70,140,255,0.00) 22%),
+                radial-gradient(circle at 35% 78%, rgba(180,90,120,0.10) 0%, rgba(180,90,120,0.00) 18%),
+                linear-gradient(180deg, #06101b 0%, #081423 35%, #091827 100%);
+            background-attachment: fixed;
+            color: #e8eef7;
+        }
+
+        .block-container {
+            background: rgba(8, 15, 28, 0.72);
+            border: 1px solid rgba(180, 210, 255, 0.10);
+            border-radius: 18px;
+            padding: 1.5rem 1.5rem 2rem 1.5rem;
+            backdrop-filter: blur(6px);
+        }
+
+        section[data-testid="stSidebar"] {
+            background: rgba(6, 12, 22, 0.92);
+            border-right: 1px solid rgba(180, 210, 255, 0.08);
+        }
+
+        h1, h2, h3 {
+            color: #f2f6fb;
+        }
+
+        div[data-testid="stExpander"],
+        div[data-testid="stDataFrame"],
+        div[data-testid="stTable"] {
+            background: rgba(12, 20, 34, 0.55);
+            border-radius: 12px;
+        }
+
+        .stButton > button {
+            border-radius: 10px;
+            border: 1px solid rgba(190, 220, 255, 0.18);
+            background: rgba(20, 32, 54, 0.88);
+            color: #edf4ff;
+        }
+
+        .stButton > button:hover {
+            border-color: rgba(130, 180, 255, 0.40);
+            background: rgba(28, 42, 68, 0.96);
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+apply_forge_theme()
+
 SDSS_URL = "https://skyserver.sdss.org/dr17/SkyServerWS/ImgCutout/getjpeg"
 SURVEYS = {"J": "2MASS-J", "H": "2MASS-H", "K": "2MASS-K"}
 
@@ -142,8 +200,8 @@ def build_storage(backend, bucket, prefix):
     )
 
 
-st.title("FORGE Orion")
-st.caption("Multi-wavelength target discovery, morphology, and archive search")
+st.title("FORGE Astronomy")
+st.caption("Field Observation, Retrieval, Generation, and Evaluation — multi-wavelength archive discovery and analysis")
 
 with st.sidebar:
     st.header("Storage")
@@ -227,8 +285,8 @@ if uploaded is not None:
 
 
 
-st.subheader("Suggested Targets")
-st.caption("Generate nearby compact-star and morphology candidates from the current field.")
+st.subheader("Suggested targets near current field")
+st.caption(f"Center: RA {ra:.6f}, Dec {dec:.6f} · Search field: {fov:.1f} arcmin · Suggestions are generated from the currently selected target.")
 
 suggest_tab1, suggest_tab2 = st.tabs(["Nearby compact stars", "Morphology regions"])
 
