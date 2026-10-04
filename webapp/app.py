@@ -75,7 +75,6 @@ st.markdown(
         unsafe_allow_html=True,
     )
 
-apply_forge_theme()
 
 SDSS_URL = "https://skyserver.sdss.org/dr17/SkyServerWS/ImgCutout/getjpeg"
 SURVEYS = {"J": "2MASS-J", "H": "2MASS-H", "K": "2MASS-K"}
