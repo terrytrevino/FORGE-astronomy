@@ -17,6 +17,12 @@ st.set_page_config(page_title="FORGE Orion", layout="wide")
 SDSS_URL = "https://skyserver.sdss.org/dr17/SkyServerWS/ImgCutout/getjpeg"
 SURVEYS = {"J": "2MASS-J", "H": "2MASS-H", "K": "2MASS-K"}
 
+KNOWN_TARGETS = {
+    "target_01": {"ra": 83.806016, "dec": -5.394502, "label": "APOGEE / Orion reference"},
+    "target_02": {"ra": 83.833500, "dec": -5.427083, "label": "APOGEE / Orion reference"},
+    "target_03": {"ra": 83.809458, "dec": -5.406833, "label": "APOGEE / Orion reference"},
+}
+
 
 def robust_limits(data, low=5, high=99):
     arr = np.asarray(data, dtype=float)
@@ -157,10 +163,48 @@ with st.sidebar:
 
     st.divider()
     st.header("Target")
+
+    # Build a persistent target menu from references + saved project targets.
+    saved_targets = []
+    try:
+        _storage_for_menu = build_storage(storage_backend, storage_bucket, storage_prefix)
+        saved_targets = _storage_for_menu.list_targets()
+    except Exception:
+        pass
+
+    target_choices = ["New target"] + list(KNOWN_TARGETS.keys())
+    for t in saved_targets:
+        if t not in target_choices:
+            target_choices.append(t)
+
+    selected_target = st.selectbox("Saved / reference target", target_choices)
+
+    default_name = "candidate_01"
+    default_ra = 84.040452
+    default_dec = -5.739921
+
+    if selected_target in KNOWN_TARGETS:
+        default_name = selected_target
+        default_ra = KNOWN_TARGETS[selected_target]["ra"]
+        default_dec = KNOWN_TARGETS[selected_target]["dec"]
+    elif selected_target != "New target":
+        default_name = selected_target
+        try:
+            _saved = _storage_for_menu.load_json(f"targets/{selected_target}/analysis.json")
+            default_ra = float(_saved.get("ra_deg", default_ra))
+            default_dec = float(_saved.get("dec_deg", default_dec))
+        except Exception:
+            try:
+                _saved = _storage_for_menu.load_json(f"targets/{selected_target}/archive_manifest.json")
+                default_ra = float(_saved.get("ra_deg", default_ra))
+                default_dec = float(_saved.get("dec_deg", default_dec))
+            except Exception:
+                pass
+
     mode = st.radio("Analysis mode", ["Point source", "Morphology region"])
-    name = st.text_input("Target name", "candidate_01")
-    ra = st.number_input("RA (deg)", value=84.040452, format="%.6f")
-    dec = st.number_input("Dec (deg)", value=-5.739921, format="%.6f")
+    name = st.text_input("Target name", value=default_name)
+    ra = st.number_input("RA (deg)", value=float(default_ra), format="%.6f")
+    dec = st.number_input("Dec (deg)", value=float(default_dec), format="%.6f")
     fov = st.slider("Field of view (arcmin)", 2.0, 12.0, 6.0, 0.5)
     discovery_radius = st.slider("Archive search radius (arcsec)", 5, 180, 30, 5)
 
@@ -173,6 +217,9 @@ if uploaded is not None:
         cdf = pd.read_csv(uploaded)
         st.subheader("Candidate list")
         st.dataframe(cdf, use_container_width=True)
+
+        if {"target_id", "ra_deg", "dec_deg"}.issubset(cdf.columns):
+            st.caption("Candidate coordinates are ready to promote into the saved target library after analysis.")
     except Exception as exc:
         st.warning(f"Could not read CSV: {exc}")
 
@@ -377,5 +424,5 @@ if st.button("Acquire + Analyze", type="primary"):
 
 st.divider()
 st.caption(
-    "FORGE web app v0.3.1 — archive discovery + MAST previews + portable storage + multi-band analysis."
+    "FORGE web app v0.4 — persistent target library + archive discovery + portable storage."
 )
