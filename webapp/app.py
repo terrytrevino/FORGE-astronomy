@@ -116,6 +116,11 @@ if uploaded is not None:
         st.warning(f"Could not read CSV: {exc}")
 
 if st.button("Acquire + Analyze", type="primary"):
+    storage = None
+    try:
+        storage = build_storage()
+    except Exception as exc:
+        st.warning(f"Analysis will run, but storage is not configured: {exc}")
     st.subheader(f"{name} — {mode}")
     st.write(f"**RA:** {ra:.6f}°   **Dec:** {dec:.6f}°")
     cols = st.columns(4)
@@ -134,7 +139,17 @@ if st.button("Acquire + Analyze", type="primary"):
             if data is None:
                 col.warning(f"2MASS {band} unavailable")
             else:
-                col.image(normalize_image(data), caption=f"2MASS {band}", use_container_width=True)
+                display = normalize_image(data)
+                col.image(display, caption=f"2MASS {band}", use_container_width=True)
+                if storage is not None:
+                    png = Image.fromarray(display)
+                    buf = io.BytesIO()
+                    png.save(buf, format="PNG")
+                    storage.save_bytes(
+                        f"targets/{name}/2mass_{band}.png",
+                        buf.getvalue(),
+                        "image/png",
+                    )
         except Exception as exc:
             col.error(f"2MASS {band} error: {exc}")
 
@@ -169,4 +184,4 @@ if st.button("Acquire + Analyze", type="primary"):
         )
 
 st.divider()
-st.caption("FORGE web app v0.1 — display stretches are for morphology, not calibrated photometry.")
+st.caption("FORGE web app v0.2 — portable storage + multi-band analysis. Display stretches are not calibrated photometry.")
