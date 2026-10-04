@@ -11,6 +11,7 @@ from astroquery.skyview import SkyView
 
 from storage import Storage, StorageConfig
 from archive_discovery import discover_archives, get_mast_preview_products
+from suggested_targets import suggest_compact_stars, suggest_morphology_regions
 
 st.set_page_config(page_title="FORGE Orion", layout="wide")
 
@@ -224,6 +225,51 @@ if uploaded is not None:
         st.warning(f"Could not read CSV: {exc}")
 
 
+
+st.subheader("Suggested Targets")
+st.caption("Generate nearby compact-star and morphology candidates from the current field.")
+
+suggest_tab1, suggest_tab2 = st.tabs(["Nearby compact stars", "Morphology regions"])
+
+with suggest_tab1:
+    if st.button("Suggest compact stars"):
+        with st.spinner("Searching nearby 2MASS point sources..."):
+            star_df, star_err = suggest_compact_stars(
+                ra, dec, radius_arcmin=max(3.0, fov), limit=8
+            )
+            if star_err:
+                st.error(f"Compact-star search failed: {star_err}")
+            elif star_df.empty:
+                st.info("No nearby compact stars found.")
+            else:
+                st.dataframe(star_df, use_container_width=True)
+                st.download_button(
+                    "Download compact-star candidates",
+                    star_df.to_csv(index=False).encode("utf-8"),
+                    file_name="forge_compact_star_candidates.csv",
+                    mime="text/csv",
+                )
+
+with suggest_tab2:
+    if st.button("Suggest morphology regions"):
+        with st.spinner("Finding high-gradient regions in 2MASS K..."):
+            morph_df, morph_err = suggest_morphology_regions(
+                ra, dec, fov_arcmin=max(6.0, fov), limit=8
+            )
+            if morph_err:
+                st.error(f"Morphology search failed: {morph_err}")
+            elif morph_df.empty:
+                st.info("No morphology candidates found.")
+            else:
+                st.dataframe(morph_df, use_container_width=True)
+                st.download_button(
+                    "Download morphology candidates",
+                    morph_df.to_csv(index=False).encode("utf-8"),
+                    file_name="forge_morphology_candidates.csv",
+                    mime="text/csv",
+                )
+
+st.divider()
 st.subheader("Archive Discovery")
 st.caption("Check what exists at this coordinate before downloading large datasets.")
 
@@ -424,5 +470,5 @@ if st.button("Acquire + Analyze", type="primary"):
 
 st.divider()
 st.caption(
-    "FORGE web app v0.4 — persistent target library + archive discovery + portable storage."
+    "FORGE web app v0.5 — persistent target library + suggested targets + archive discovery."
 )
