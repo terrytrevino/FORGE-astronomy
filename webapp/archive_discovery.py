@@ -190,61 +190,86 @@ def discover_archives(ra_deg, dec_deg, radius_arcsec=30.0):
     return manifest, results
 
 
-def get_mast_preview_products(ra_deg, dec_deg, radius_arcsec=30.0, max_observations=12, max_products=6):
-    """Return a small set of MAST preview image products for quick-look display."""
-    coord = SkyCoord(ra=float(ra_deg) * u.deg, dec=float(dec_deg) * u.deg, frame="icrs")
+def get_mast_preview_products(
+    ra_deg,
+    dec_deg,
+    radius_arcsec=30.0,
+    max_observations=12,
+    max_products=6,
+):
+    """Return a small set of public MAST quick-look image products."""
+    coord = SkyCoord(
+        ra=float(ra_deg) * u.deg,
+        dec=float(dec_deg) * u.deg,
+        frame="icrs",
+    )
     radius = float(radius_arcsec) * u.arcsec
 
     obs = Observations.query_region(coord, radius=radius)
     if obs is None or len(obs) == 0:
         return []
 
-    # Prefer image-like public observations from JWST/HST/HLA/HLSP when available.
-    rows = []
-    for row in obs:
-        try:
-            collection = str(row["obs_collection"]) if "obs_collection" in obs.colnames else ""
-            dtype = str(row["dataproduct_type"]) if "dataproduct_type" in obs.colnames else ""
-            rights = str(row["dataRights"]) if "dataRights" in obs.colnames else ""
-            priority = 0
-            if collection in {"JWST", "HST", "HLA", "HLSP"}:
-                priority += 10
-            if dtype.lower() == "image":
-                priority += 5
-            if rights.upper() == "PUBLIC":
-                priority += 2
-            rows.append((priority, row))
-        except Exception:
-            rows.append((0, row))
+    # Build a numeric priority array, then slice the Astropy table directly.
+    priorities = []
+    cols = obs.colnames
 
-    rows.sort(key=lambda x: x[0], reverse=True)
-    selected = [r for _, r in rows[:max_observations]]
+    for row in obs:
+        score = 0
+        try:
+            collection = str(row["obs_collection"]) if "obs_collection" in cols else ""
+            dtype = str(row["dataproduct_type"]) if "dataproduct_type" in cols else ""
+            rights = str(row["dataRights"]) if "dataRights" in cols else ""
+
+            if collection in {"JWST", "HST", "HLA", "HLSP"}:
+                score += 10
+            if dtype.lower() == "image":
+                score += 5
+            if rights.upper() == "PUBLIC":
+                score += 2
+        except Exception:
+            pass
+
+        priorities.append(score)
+
+    import numpy as np
+
+    order = np.argsort(np.asarray(priorities, dtype=float))[::-1]
+    take = order[: min(max_observations, len(order))]
+
+    selected = obs[take]
 
     products = Observations.get_product_list(selected)
     if products is None or len(products) == 0:
         return []
 
     out = []
-    cols = products.colnames
+    pcols = products.colnames
+
     for row in products:
         try:
-            filename = str(row["productFilename"]) if "productFilename" in cols else ""
-            uri = str(row["dataURI"]) if "dataURI" in cols else ""
-            ptype = str(row["productType"]) if "productType" in cols else ""
-            description = str(row["description"]) if "description" in cols else ""
+            filename = str(row["productFilename"]) if "productFilename" in pcols else ""
+            uri = str(row["dataURI"]) if "dataURI" in pcols else ""
+            ptype = str(row["productType"]) if "productType" in pcols else ""
+            description = str(row["description"]) if "description" in pcols else ""
+
             lower = filename.lower()
             if not lower.endswith((".jpg", ".jpeg", ".png")):
                 continue
             if not uri:
                 continue
-            out.append({
-                "filename": filename,
-                "dataURI": uri,
-                "productType": ptype,
-                "description": description,
-            })
+
+            out.append(
+                {
+                    "filename": filename,
+                    "dataURI": uri,
+                    "productType": ptype,
+                    "description": description,
+                }
+            )
+
             if len(out) >= max_products:
                 break
+
         except Exception:
             continue
 
