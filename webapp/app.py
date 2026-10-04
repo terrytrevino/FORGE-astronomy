@@ -106,6 +106,7 @@ with st.sidebar:
     fov = st.slider("Field of view (arcmin)", 2.0, 12.0, 6.0, 0.5)
     st.divider()
     uploaded = st.file_uploader("Candidate CSV", type=["csv"])
+    discovery_radius = st.slider("Archive search radius (arcsec)", 5, 180, 30, 5)
 
 if uploaded is not None:
     try:
@@ -184,4 +185,4 @@ if st.button("Acquire + Analyze", type="primary"):
         )
 
 st.divider()
-st.caption("FORGE web app v0.2 — portable storage + multi-band analysis. Display stretches are not calibrated photometry.")
+st.caption("FORGE web app v0.3 — archive discovery + portable storage + multi-band analysis.")
