@@ -14,6 +14,7 @@ from archive_discovery import discover_archives, get_mast_preview_products, get_
 from suggested_targets import suggest_compact_stars, suggest_compact_star_catalogs, suggest_morphology_regions
 from spectroscopy import fetch_sdss_spectrum, spectrum_dataframe, spectrum_figure, fetch_apogee_spectrum, apogee_spectrum_figure, apogee_feature_guide, apogee_quality_summary, fetch_mast_spectrum_product, generic_spectrum_figure
 from radio_historical import discover_dss, discover_dasch, discover_nrao, classify_radio_spectral_candidates
+from name_resolver import resolve_object_name
 
 st.set_page_config(page_title="FORGE Orion", layout="wide")
 
@@ -540,10 +541,46 @@ with st.sidebar:
             except Exception:
                 pass
 
+    # Keep editable target state synchronized when the saved/reference target changes.
+    if st.session_state.get("forge_selected_target_prev") != selected_target:
+        st.session_state["forge_target_name"] = default_name
+        st.session_state["forge_ra"] = float(default_ra)
+        st.session_state["forge_dec"] = float(default_dec)
+        st.session_state["forge_selected_target_prev"] = selected_target
+
+    st.markdown("**Resolve astronomical name**")
+    resolver_query = st.text_input(
+        "Object name or catalog ID",
+        placeholder="e.g., Betelgeuse, M42, θ1 Ori C, NGC 2024",
+        key="forge_resolver_query",
+    )
+
+    if st.button("Resolve name", key="forge_resolve_name"):
+        with st.spinner("Resolving object name..."):
+            st.session_state["forge_resolved_object"] = resolve_object_name(resolver_query)
+
+    resolved = st.session_state.get("forge_resolved_object")
+    if resolved:
+        if resolved.get("status") == "OK":
+            canonical = resolved.get("canonical_name") or resolved.get("input_name")
+            otype = resolved.get("object_type") or "object"
+            st.caption(
+                f"Resolved: {canonical} · {otype} · "
+                f"RA {resolved['ra_deg']:.6f}°, Dec {resolved['dec_deg']:.6f}° "
+                f"({resolved.get('resolver', 'resolver')})"
+            )
+            if st.button("Use resolved object", key="forge_use_resolved"):
+                st.session_state["forge_target_name"] = str(canonical)
+                st.session_state["forge_ra"] = float(resolved["ra_deg"])
+                st.session_state["forge_dec"] = float(resolved["dec_deg"])
+                st.success("Resolved coordinates loaded into the FORGE target.")
+        else:
+            st.warning(resolved.get("message", "Object name could not be resolved."))
+
     mode = st.radio("Analysis mode", ["Point source", "Morphology region"])
-    name = st.text_input("Target name", value=default_name)
-    ra = st.number_input("RA (deg)", value=float(default_ra), format="%.6f")
-    dec = st.number_input("Dec (deg)", value=float(default_dec), format="%.6f")
+    name = st.text_input("Target name", key="forge_target_name")
+    ra = st.number_input("RA (deg)", format="%.6f", key="forge_ra")
+    dec = st.number_input("Dec (deg)", format="%.6f", key="forge_dec")
     fov = st.slider("Field of view (arcmin)", 2.0, 12.0, 6.0, 0.5)
     discovery_radius = st.slider("Archive search radius (arcsec)", 5, 180, 30, 5)
 
