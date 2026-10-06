@@ -58,17 +58,18 @@ st.markdown(
         }
 
         .block-container {
-            background: rgba(7, 14, 26, 0.54) !important;
-            border: 1px solid rgba(180, 210, 255, 0.22) !important;
+            background: rgba(6, 12, 22, 0.28) !important;
+            border: 1px solid rgba(180, 210, 255, 0.28) !important;
             border-radius: 18px;
             padding: 1.5rem 1.5rem 2rem 1.5rem;
-            backdrop-filter: blur(3px);
-            box-shadow: 0 10px 35px rgba(0,0,0,0.18);
+            backdrop-filter: blur(1.5px);
+            box-shadow: 0 10px 35px rgba(0,0,0,0.14);
         }
 
         section[data-testid="stSidebar"] {
-            background: rgba(6, 12, 22, 0.92);
-            border-right: 1px solid rgba(180, 210, 255, 0.08);
+            background: rgba(6, 12, 22, 0.58) !important;
+            border-right: 1px solid rgba(180, 210, 255, 0.18);
+            backdrop-filter: blur(4px);
         }
 
         h1, h2, h3 {
@@ -224,6 +225,35 @@ st.markdown(
     section[data-testid="stSidebar"] [data-testid="stWidgetLabel"] {
         color: #E7EEF8 !important;
         opacity: 1 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+# FORGE_TRANSPARENT_SURFACES
+st.markdown(
+    """
+    <style>
+    [data-testid="stMain"],
+    [data-testid="stMainBlockContainer"],
+    [data-testid="stVerticalBlock"],
+    [data-testid="stElementContainer"] {
+        background: transparent !important;
+    }
+
+    section[data-testid="stSidebar"] > div {
+        background: transparent !important;
+    }
+
+    /* Keep individual controls readable while allowing the page background through */
+    div[data-baseweb="input"] > div,
+    div[data-baseweb="select"] > div,
+    section[data-testid="stFileUploaderDropzone"],
+    details[data-testid="stExpander"],
+    div[data-testid="stDataFrame"] {
+        background-color: rgba(15, 29, 48, 0.88) !important;
     }
     </style>
     """,
