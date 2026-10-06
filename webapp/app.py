@@ -694,15 +694,6 @@ if st.button("Search All Archives", type="primary"):
             ra, dec, radius_arcmin=max(6.0, fov)
         ),
         "Harvard DASCH": lambda: discover_dasch(ra, dec),
-        "NRAO radio": lambda: discover_nrao(
-            ra,
-            dec,
-            radius_arcmin=max(5.0, discovery_radius / 60.0),
-            max_rows=8,
-            attempts=1,
-            read_timeout=8,
-            fast_mode=True,
-        ),
     }
 
     progress = st.progress(0, text="Starting archive queries...")
@@ -762,7 +753,6 @@ if st.button("Search All Archives", type="primary"):
         "ALMA": 3,
         "DSS / photographic plates": 4,
         "Harvard DASCH": 5,
-        "NRAO radio": 6,
     }
     all_results.sort(
         key=lambda x: preferred_order.get(x.get("archive", ""), 99)
@@ -863,8 +853,10 @@ if st.button("Search All Archives", type="primary"):
         pass
 
 st.caption(
-    "Search All Archives queries every observation-archive adapter currently integrated in FORGE. "
-    "Gaia and 2MASS source-catalog matching are handled separately under Suggested targets / source identity."
+    "Search All Archives runs the fast, reliable observation-archive adapters integrated in FORGE. "
+    "NRAO radio is intentionally handled as a separate Deep Radio Search because its external TAP service "
+    "can be slow or unavailable. Gaia and 2MASS source-catalog matching are handled separately under "
+    "Suggested targets / source identity."
 )
 
 with st.expander("Advanced archive controls"):
@@ -951,7 +943,7 @@ if st.button("Show MAST previews"):
 st.divider()
 
 
-st.subheader("Historical + Radio Discovery")
+st.subheader("Historical + Deep Radio Discovery")
 st.caption(
     "Check photographic plate history and radio-archive coverage around the current field."
 )
@@ -987,8 +979,12 @@ with hist_col:
                 st.json(dasch_result.get("details", []))
 
 with radio_col:
-    if st.button("Discover NRAO radio"):
-        with st.spinner("Querying NRAO VLA / VLBA / GBT / ALMA metadata..."):
+    st.caption(
+        "NRAO is queried separately because its TAP service can respond slowly. "
+        "A timeout here does not indicate a FORGE failure."
+    )
+    if st.button("Deep NRAO radio search"):
+        with st.spinner("Running deeper NRAO VLA / VLBA / GBT / ALMA metadata search..."):
             nrao_result = discover_nrao(
                 ra,
                 dec,
