@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "forge-astronomy"
+version = "0.11.0"
+description = "Field Observation, Retrieval, Generation, and Evaluation for coordinate-driven astronomy workflows"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+  {name = "D. Terry Trevino"},
+  {name = "Vivian Hom"}
+]
+keywords = ["astronomy", "astrophysics", "archives", "spectroscopy", "streamlit", "fornax"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Astronomy"
+]
+
+[project.urls]
+Homepage = "https://github.com/terrytrevino/FORGE-astronomy"
+Repository = "https://github.com/terrytrevino/FORGE-astronomy"
+"Web App" = "https://forge-astronomy-rpjevm5zy6an8falnxcyvx.streamlit.app/"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
