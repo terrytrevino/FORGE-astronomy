@@ -154,6 +154,59 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+
+# FORGE_SIDEBAR_SELECT_CONTRAST
+st.markdown(
+    """
+    <style>
+    /* Sidebar dropdown/select boxes */
+    section[data-testid="stSidebar"] div[data-baseweb="select"] > div {
+        background-color: #13263F !important;
+        border: 1.8px solid #8FB3E8 !important;
+        border-radius: 8px !important;
+        color: #F6F9FD !important;
+        min-height: 2.45rem !important;
+        box-shadow: 0 0 0 1px rgba(143,179,232,0.10) !important;
+    }
+
+    section[data-testid="stSidebar"] div[data-baseweb="select"] span {
+        color: #F6F9FD !important;
+        opacity: 1 !important;
+    }
+
+    section[data-testid="stSidebar"] div[data-baseweb="select"] svg {
+        fill: #DDE9F8 !important;
+        color: #DDE9F8 !important;
+    }
+
+    /* Dropdown popup menu */
+    div[data-baseweb="popover"] ul {
+        background-color: #102039 !important;
+        border: 1.5px solid #789DCE !important;
+    }
+
+    div[data-baseweb="popover"] li {
+        color: #F1F6FC !important;
+        background-color: #102039 !important;
+    }
+
+    div[data-baseweb="popover"] li:hover,
+    div[data-baseweb="popover"] li[aria-selected="true"] {
+        background-color: #1B3A61 !important;
+        color: #FFFFFF !important;
+    }
+
+    /* Sidebar labels above controls */
+    section[data-testid="stSidebar"] label,
+    section[data-testid="stSidebar"] [data-testid="stWidgetLabel"] {
+        color: #E7EEF8 !important;
+        opacity: 1 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 SDSS_URL = "https://skyserver.sdss.org/dr17/SkyServerWS/ImgCutout/getjpeg"
 SURVEYS = {"J": "2MASS-J", "H": "2MASS-H", "K": "2MASS-K"}
 
