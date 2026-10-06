@@ -38,6 +38,27 @@ APOGEE_REFERENCE_LINES = [
     ("Al I", 16763.359),
 ]
 
+APOGEE_PIXMASK_BITS = {
+    0: "BADPIX",
+    1: "CRPIX",
+    2: "SATPIX",
+    3: "UNFIXABLE",
+    4: "BADDARK",
+    5: "BADFLAT",
+    6: "BADERR",
+    7: "NOSKY",
+    8: "LITTROW_GHOST",
+    9: "PERSIST_HIGH",
+    10: "PERSIST_MED",
+    11: "PERSIST_LOW",
+    12: "SIG_SKYLINE",
+    13: "SIG_TELLURIC",
+    14: "NOT_ENOUGH_PSF",
+}
+
+APOGEE_HARD_BAD_BITS = {0, 1, 2, 3, 4, 5, 6}
+APOGEE_CAUTION_BITS = {7, 8, 9, 10, 11, 12, 13, 14}
+
 APOGEE_FEATURE_GUIDE = [
     {
         "species": "Mg I",
@@ -296,9 +317,84 @@ def fetch_apogee_spectrum(apogee_id=None, ra_deg=None, dec_deg=None):
             # APOGEE apStar wavelength is logarithmic log10(lambda/Angstrom).
             wavelength = 10 ** (float(crval) + float(cdelt) * pix)
 
+            # Recover per-pixel uncertainty / mask information when present.
+            # APOGEE apStar products commonly provide these in subsequent HDUs,
+            # but we inspect EXTNAME/dtype rather than assuming one rigid layout.
+            error = None
+            pixmask = None
+
+            for hdu in hdul[2:]:
+                arr = getattr(hdu, "data", None)
+                if arr is None:
+                    continue
+
+                try:
+                    arr = np.asarray(arr)
+                    if arr.ndim > 1:
+                        arr = np.asarray(arr[0])
+                    arr = np.squeeze(arr)
+                except Exception:
+                    continue
+
+                if arr.ndim != 1 or len(arr) != len(flux):
+                    continue
+
+                extname = str(hdu.header.get("EXTNAME", "")).upper()
+
+                if pixmask is None and ("MASK" in extname or np.issubdtype(arr.dtype, np.integer)):
+                    try:
+                        pixmask = np.asarray(arr, dtype=np.int64)
+                        continue
+                    except Exception:
+                        pass
+
+                if error is None and any(k in extname for k in ["ERR", "ERROR", "SIGMA"]):
+                    try:
+                        error = np.asarray(arr, dtype=float)
+                        continue
+                    except Exception:
+                        pass
+
+                if error is None and "IVAR" in extname:
+                    try:
+                        ivar = np.asarray(arr, dtype=float)
+                        error = np.full_like(ivar, np.nan, dtype=float)
+                        good_ivar = np.isfinite(ivar) & (ivar > 0)
+                        error[good_ivar] = 1.0 / np.sqrt(ivar[good_ivar])
+                        continue
+                    except Exception:
+                        pass
+
+            # Conservative positional fallbacks for legacy apStar layouts.
+            if error is None and len(hdul) > 2:
+                try:
+                    arr = np.asarray(hdul[2].data)
+                    if arr.ndim > 1:
+                        arr = np.asarray(arr[0])
+                    arr = np.squeeze(arr).astype(float)
+                    if arr.ndim == 1 and len(arr) == len(flux):
+                        error = arr
+                except Exception:
+                    pass
+
+            if pixmask is None and len(hdul) > 3:
+                try:
+                    arr = np.asarray(hdul[3].data)
+                    if arr.ndim > 1:
+                        arr = np.asarray(arr[0])
+                    arr = np.squeeze(arr)
+                    if arr.ndim == 1 and len(arr) == len(flux):
+                        pixmask = arr.astype(np.int64)
+                except Exception:
+                    pass
+
             finite = np.isfinite(wavelength) & np.isfinite(flux)
             wavelength = wavelength[finite]
             flux = flux[finite]
+            if error is not None:
+                error = np.asarray(error)[finite]
+            if pixmask is not None:
+                pixmask = np.asarray(pixmask)[finite]
 
     except Exception as exc:
         return None, None, {
@@ -307,18 +403,39 @@ def fetch_apogee_spectrum(apogee_id=None, ra_deg=None, dec_deg=None):
             **meta,
         }
 
+    quality = {
+        "available": pixmask is not None or error is not None,
+        "pixmask": pixmask,
+        "error": error,
+    }
+
+    if pixmask is not None:
+        hard_bad = np.zeros(len(pixmask), dtype=bool)
+        caution = np.zeros(len(pixmask), dtype=bool)
+        for bit in APOGEE_HARD_BAD_BITS:
+            hard_bad |= (pixmask & (1 << bit)) != 0
+        for bit in APOGEE_CAUTION_BITS:
+            caution |= (pixmask & (1 << bit)) != 0
+
+        quality["hard_bad"] = hard_bad
+        quality["caution"] = caution
+        quality["flagged_count"] = int(np.sum(hard_bad | caution))
+        quality["hard_bad_count"] = int(np.sum(hard_bad))
+        quality["caution_count"] = int(np.sum(caution))
+
     meta = {
         **meta,
         "archive": "SDSS APOGEE DR17",
         "spectrum_type": "apStar combined H-band spectrum",
         "url": url,
+        "_quality": quality,
     }
     return wavelength, flux, meta
 
 
-def apogee_spectrum_figure(wavelength, flux, show_lines=True):
+def apogee_spectrum_figure(wavelength, flux, show_lines=True, quality=None, show_quality=True):
     fig, ax = plt.subplots(figsize=(11, 4.8))
-    ax.plot(wavelength, flux, linewidth=0.75)
+    ax.plot(wavelength, flux, linewidth=0.75, label="Spectrum")
     ax.set_xlabel("Wavelength (Å)")
     ax.set_ylabel("Flux")
     ax.set_title("APOGEE DR17 H-band spectrum")
@@ -349,8 +466,105 @@ def apogee_spectrum_figure(wavelength, flux, show_lines=True):
                 )
                 visible_index += 1
 
+    if show_quality and quality and quality.get("available"):
+        hard_bad = quality.get("hard_bad")
+        caution = quality.get("caution")
+
+        if hard_bad is not None and np.any(hard_bad):
+            idx = np.where(hard_bad)[0]
+            if len(idx) > 250:
+                idx = idx[::max(1, len(idx) // 250)]
+            ax.scatter(
+                wavelength[idx],
+                flux[idx],
+                marker="x",
+                s=18,
+                alpha=0.75,
+                label="Pipeline bad/cosmic/saturated pixel",
+            )
+
+        if caution is not None and np.any(caution):
+            idx = np.where(caution)[0]
+            if len(idx) > 250:
+                idx = idx[::max(1, len(idx) // 250)]
+            ax.scatter(
+                wavelength[idx],
+                flux[idx],
+                marker="o",
+                facecolors="none",
+                s=18,
+                alpha=0.65,
+                label="Pipeline caution: sky/telluric/persistence",
+            )
+
+        # Flag unusually high, otherwise unmasked points as candidates for review.
+        good = np.ones(len(flux), dtype=bool)
+        if hard_bad is not None:
+            good &= ~hard_bad
+        if caution is not None:
+            good &= ~caution
+
+        if np.sum(good) > 30:
+            s = pd.Series(flux)
+            baseline = s.rolling(window=15, center=True, min_periods=5).median().to_numpy()
+            resid = flux - baseline
+            valid_resid = resid[good & np.isfinite(resid)]
+            if len(valid_resid) > 20:
+                med = np.nanmedian(valid_resid)
+                mad = np.nanmedian(np.abs(valid_resid - med))
+                sigma = 1.4826 * mad if mad > 0 else np.nanstd(valid_resid)
+                if np.isfinite(sigma) and sigma > 0:
+                    candidate = good & np.isfinite(resid) & (resid > med + 6.0 * sigma)
+                    idx = np.where(candidate)[0]
+                    if len(idx) > 40:
+                        idx = idx[np.argsort(resid[idx])[-40:]]
+                    if len(idx):
+                        ax.scatter(
+                            wavelength[idx],
+                            flux[idx],
+                            marker="^",
+                            s=28,
+                            alpha=0.8,
+                            label="Unflagged upward outlier — inspect",
+                        )
+
+        handles, labels = ax.get_legend_handles_labels()
+        if labels:
+            ax.legend(loc="best", fontsize=7, framealpha=0.7)
+
     fig.tight_layout()
     return fig
+
+
+def apogee_quality_summary(quality):
+    if not quality or not quality.get("available"):
+        return pd.DataFrame([{
+            "quality layer": "Unavailable",
+            "count": 0,
+            "meaning": "This spectrum did not expose a usable APOGEE per-pixel error/mask array.",
+        }])
+
+    rows = []
+    if "hard_bad_count" in quality:
+        rows.append({
+            "quality layer": "Pipeline bad pixels",
+            "count": quality.get("hard_bad_count", 0),
+            "meaning": "Bad pixel, cosmic ray, saturation, unfixable, bad dark/flat, or bad-error flags.",
+        })
+        rows.append({
+            "quality layer": "Pipeline caution pixels",
+            "count": quality.get("caution_count", 0),
+            "meaning": "Sky/telluric contamination, persistence, ghost, missing sky, or PSF warning.",
+        })
+
+    if quality.get("error") is not None:
+        rows.append({
+            "quality layer": "Uncertainty array",
+            "count": int(np.sum(np.isfinite(quality["error"]))),
+            "meaning": "Per-pixel uncertainty values available for further quantitative screening.",
+        })
+
+    return pd.DataFrame(rows)
 
 
 def apogee_feature_guide():
