@@ -274,3 +274,92 @@ def get_mast_preview_products(
             continue
 
     return out
+
+
+def get_mast_spectrum_products(ra_deg, dec_deg, radius_arcsec=30.0, max_observations=20, max_products=12):
+    """Return candidate public MAST spectrum products near a coordinate."""
+    coord = SkyCoord(
+        ra=float(ra_deg) * u.deg,
+        dec=float(dec_deg) * u.deg,
+        frame="icrs",
+    )
+    radius = float(radius_arcsec) * u.arcsec
+
+    obs = Observations.query_region(coord, radius=radius)
+    if obs is None or len(obs) == 0:
+        return []
+
+    # Prefer observations explicitly described as spectra and major spectroscopic missions.
+    scores = []
+    cols = obs.colnames
+
+    for row in obs:
+        score = 0
+        try:
+            dtype = str(row["dataproduct_type"]).lower() if "dataproduct_type" in cols else ""
+            collection = str(row["obs_collection"]) if "obs_collection" in cols else ""
+            instrument = str(row["instrument_name"]) if "instrument_name" in cols else ""
+
+            if "spectrum" in dtype:
+                score += 20
+            if collection in {"HST", "JWST", "IUE", "FUSE", "SDSS", "HLSP"}:
+                score += 6
+            if any(x in instrument.upper() for x in ["STIS", "COS", "NIRSPEC", "MIRI", "IUE", "FUSE"]):
+                score += 6
+        except Exception:
+            pass
+        scores.append(score)
+
+    import numpy as np
+    order = np.argsort(np.asarray(scores, dtype=float))[::-1]
+    selected = obs[order[: min(max_observations, len(order))]]
+
+    products = Observations.get_product_list(selected)
+    if products is None or len(products) == 0:
+        return []
+
+    out = []
+    pcols = products.colnames
+
+    for row in products:
+        try:
+            filename = str(row["productFilename"]) if "productFilename" in pcols else ""
+            uri = str(row["dataURI"]) if "dataURI" in pcols else ""
+            ptype = str(row["productType"]) if "productType" in pcols else ""
+            subtype = str(row["productSubGroupDescription"]) if "productSubGroupDescription" in pcols else ""
+            desc = str(row["description"]) if "description" in pcols else ""
+
+            low = " ".join([filename, ptype, subtype, desc]).lower()
+
+            # Favor likely science spectra; ignore obvious previews and images.
+            if not uri:
+                continue
+            if not filename.lower().endswith((".fits", ".fits.gz", ".fit")):
+                continue
+            if not any(k in low for k in ["spec", "x1d", "sx1", "mxlo", "spectrum", "spectra"]):
+                continue
+
+            item = {
+                "filename": filename,
+                "dataURI": uri,
+                "productType": ptype,
+                "productSubGroupDescription": subtype,
+                "description": desc,
+            }
+
+            # include mission/instrument columns if present in product table
+            for key in ["obs_collection", "instrument_name", "obs_id"]:
+                if key in pcols:
+                    try:
+                        item[key] = str(row[key])
+                    except Exception:
+                        pass
+
+            out.append(item)
+            if len(out) >= max_products:
+                break
+
+        except Exception:
+            continue
+
+    return out
