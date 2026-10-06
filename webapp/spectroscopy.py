@@ -21,6 +21,56 @@ COMMON_LINES = [
     ("[S II]", 6730.82),
 ]
 
+# A deliberately small set of representative, published APOGEE H-band
+# abundance-sensitive atomic lines. The full APOGEE/ASPCAP analysis uses
+# many more atomic and molecular features plus stellar-atmosphere models.
+APOGEE_REFERENCE_LINES = [
+    ("K I", 15163.067),
+    ("K I", 15168.376),
+    ("Mg I", 15740.716),
+    ("Mg I", 15748.886),
+    ("Mg I", 15765.842),
+    ("Si I", 15888.409),
+    ("Si I", 15960.060),
+    ("Ca I", 16150.763),
+    ("Ca I", 16155.236),
+    ("Al I", 16718.957),
+    ("Al I", 16763.359),
+]
+
+APOGEE_FEATURE_GUIDE = [
+    {
+        "species": "Mg I",
+        "meaning": "Neutral magnesium; an alpha element used in stellar chemical-abundance work.",
+        "abundance_note": "Interpret with APOGEE/ASPCAP [Mg/Fe] or [Mg/H], not line depth alone.",
+    },
+    {
+        "species": "Si I",
+        "meaning": "Neutral silicon; another alpha element and tracer of stellar chemical history.",
+        "abundance_note": "Use model-derived [Si/Fe] or [Si/H] where available.",
+    },
+    {
+        "species": "Ca I",
+        "meaning": "Neutral calcium; alpha-element features occur in the APOGEE H band.",
+        "abundance_note": "Use model-derived [Ca/Fe] or [Ca/H] where available.",
+    },
+    {
+        "species": "Al I",
+        "meaning": "Neutral aluminum; useful for nucleosynthetic and stellar-population studies.",
+        "abundance_note": "Use model-derived [Al/Fe] or [Al/H] where available.",
+    },
+    {
+        "species": "K I",
+        "meaning": "Neutral potassium; APOGEE includes measurable potassium features in suitable stars.",
+        "abundance_note": "Use model-derived [K/Fe] or [K/H] where available.",
+    },
+    {
+        "species": "CO / CN / OH",
+        "meaning": "Molecular features distributed across the H band carry information about C, N, and O.",
+        "abundance_note": "APOGEE derives these abundances from many blended molecular features and atmosphere models.",
+    },
+]
+
 
 def fetch_sdss_spectrum(ra_deg, dec_deg, radius_arcsec=5.0):
     coord = SkyCoord(
@@ -266,15 +316,37 @@ def fetch_apogee_spectrum(apogee_id=None, ra_deg=None, dec_deg=None):
     return wavelength, flux, meta
 
 
-def apogee_spectrum_figure(wavelength, flux):
-    fig, ax = plt.subplots(figsize=(11, 4.5))
+def apogee_spectrum_figure(wavelength, flux, show_lines=True):
+    fig, ax = plt.subplots(figsize=(11, 4.8))
     ax.plot(wavelength, flux, linewidth=0.75)
     ax.set_xlabel("Wavelength (Å)")
     ax.set_ylabel("Flux")
     ax.set_title("APOGEE DR17 H-band spectrum")
     ax.grid(alpha=0.2)
+
+    if show_lines and len(wavelength):
+        _, ymax = ax.get_ylim()
+        for label, wave in APOGEE_REFERENCE_LINES:
+            if wavelength.min() <= wave <= wavelength.max():
+                ax.axvline(wave, linewidth=0.6, linestyle="--", alpha=0.5)
+                ax.text(
+                    wave,
+                    ymax,
+                    label,
+                    rotation=90,
+                    va="top",
+                    ha="right",
+                    fontsize=7,
+                    alpha=0.82,
+                )
+
     fig.tight_layout()
     return fig
+
+
+def apogee_feature_guide():
+    """Educational guide for representative APOGEE H-band fingerprints."""
+    return pd.DataFrame(APOGEE_FEATURE_GUIDE)
 
 
 def _extract_wave_flux_from_hdul(hdul):
