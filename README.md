@@ -269,6 +269,17 @@ forge/
 - Streamlit web interface
 - Jupyter / NASA Fornax workflow
 
+## Release engineering
+
+FORGE v0.11 now includes two GitHub Actions release gates:
+
+- **Python application** — installs the web-app dependencies on Python 3.11 and 3.12, compiles the Python sources, installs the local package, and runs the smoke-test suite.
+- **Python package** — builds a source distribution and wheel, validates the distributions, installs the wheel, verifies the package version, and uploads the build artifacts.
+
+Python package metadata lives in `pyproject.toml`. The initial importable package API is `forge_astronomy`, version `0.11.0`. During the public alpha the Streamlit application remains under `webapp/`; reusable science-engine code will progressively migrate behind the package API.
+
+See `RELEASE_CHECKLIST.md` for the team-release gate.
+
 ## Development milestones
 
 ### Completed in the current public alpha
