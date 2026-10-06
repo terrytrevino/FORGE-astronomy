@@ -258,3 +258,69 @@ def suggest_morphology_regions(
         })
 
     return pd.DataFrame(rows), None
+
+
+def suggest_compact_star_catalogs(ra_deg, dec_deg, radius_arcmin=6.0, limit=8):
+    """Return 2MASS and Gaia compact-star suggestions in parallel."""
+    coord = SkyCoord(
+        ra=float(ra_deg) * u.deg,
+        dec=float(dec_deg) * u.deg,
+        frame="icrs",
+    )
+
+    # 2MASS primary list
+    two_df = pd.DataFrame()
+    two_note = None
+    table, irsa_error = _query_2mass_with_retry(
+        coord,
+        float(radius_arcmin) * u.arcmin,
+        attempts=2,
+    )
+
+    if table is not None and len(table) > 0:
+        rows = []
+        cols = table.colnames
+        for row in table:
+            try:
+                ra = float(row["ra"])
+                dec = float(row["dec"])
+                src = SkyCoord(ra=ra * u.deg, dec=dec * u.deg)
+                sep = coord.separation(src).arcsec
+                rows.append({
+                    "target_id": str(row["designation"]) if "designation" in cols else "2MASS",
+                    "ra_deg": ra,
+                    "dec_deg": dec,
+                    "separation_arcsec": sep,
+                    "j_mag": float(row["j_m"]) if "j_m" in cols else np.nan,
+                    "h_mag": float(row["h_m"]) if "h_m" in cols else np.nan,
+                    "ks_mag": float(row["k_m"]) if "k_m" in cols else np.nan,
+                    "ph_qual": str(row["ph_qual"]) if "ph_qual" in cols else "",
+                    "cc_flg": str(row["cc_flg"]) if "cc_flg" in cols else "",
+                    "source_catalog": "2MASS PSC",
+                })
+            except Exception:
+                continue
+
+        two_df = pd.DataFrame(rows)
+        if not two_df.empty:
+            two_df["quality_score"] = two_df["ph_qual"].apply(
+                lambda x: sum(1 for ch in str(x) if ch == "A")
+            )
+            two_df["clean_score"] = (two_df["cc_flg"] == "000").astype(int)
+            two_df = two_df.sort_values(
+                by=["clean_score", "quality_score", "ks_mag", "separation_arcsec"],
+                ascending=[False, False, True, True],
+                na_position="last",
+            ).head(limit).drop(columns=["quality_score", "clean_score"])
+    elif irsa_error is not None:
+        two_note = f"2MASS/IRSA unavailable: {irsa_error}"
+
+    # Gaia list independently
+    gaia_df, gaia_error = _suggest_from_gaia(
+        coord,
+        radius_arcmin=radius_arcmin,
+        limit=limit,
+    )
+    gaia_note = f"Gaia unavailable: {gaia_error}" if gaia_error else None
+
+    return two_df, gaia_df, two_note, gaia_note
