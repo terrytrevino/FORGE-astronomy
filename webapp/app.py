@@ -25,7 +25,8 @@ st.markdown(
         <style>
         html, body, [data-testid="stAppViewContainer"], .stApp {
             background-color: #050b14 !important;
-            color: #e8eef7 !important;
+            color: #dfe8f3 !important;
+            font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif !important;
         }
 
         [data-testid="stAppViewContainer"] {
@@ -76,7 +77,8 @@ st.markdown(
         }
 
         h1, h2, h3 {
-            color: #f2f6fb;
+            color: #eaf1f8;
+            letter-spacing: 0.01em;
         }
 
         div[data-testid="stExpander"],
@@ -154,7 +156,7 @@ st.markdown(
     .stDownloadButton > button {
         border: 1.5px solid rgba(190, 215, 250, 0.62) !important;
         background-color: #142742 !important;
-        color: #F4F8FD !important;
+        color: #E8F0F8 !important;
         font-weight: 600 !important;
     }
     .stButton > button:hover,
@@ -173,7 +175,7 @@ st.markdown(
     /* Secondary/help text */
     [data-testid="stCaptionContainer"],
     [data-testid="stMarkdownContainer"] small {
-        color: #C7D3E5 !important;
+        color: #BFCDE0 !important;
         opacity: 1 !important;
     }
     </style>
@@ -451,25 +453,28 @@ st.markdown(
     }
 
     .forge-hero-title {
+        font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
         font-size: 2.55rem;
         line-height: 1.02;
-        font-weight: 760;
-        color: #ffffff;
+        font-weight: 650;
+        color: #edf4fb;
         margin-bottom: 0.45rem;
-        letter-spacing: 0.01em;
+        letter-spacing: 0.085em;
+        text-transform: uppercase;
     }
 
     .forge-hero-subtitle {
-        font-size: 1.08rem;
-        color: #e7eef9;
+        font-size: 1.03rem;
+        color: #d6e2ef;
         margin-bottom: 0.72rem;
-        font-weight: 600;
+        font-weight: 520;
+        letter-spacing: 0.025em;
     }
 
     .forge-hero-tagline {
         font-size: 0.98rem;
-        line-height: 1.45;
-        color: #d7e3f3;
+        line-height: 1.5;
+        color: #c6d5e6;
         max-width: 700px;
     }
 
@@ -634,8 +639,11 @@ if uploaded is not None:
 
 
 
-st.subheader("Suggested targets near current field")
-st.caption(f"Center: RA {ra:.6f}, Dec {dec:.6f} · Search field: {fov:.1f} arcmin · Suggestions are generated from the currently selected target.")
+st.subheader("Explore Nearby Targets & Structure")
+st.caption(
+    f"Optional follow-up after choosing a target · Center: RA {ra:.6f}, Dec {dec:.6f} · "
+    f"Search field: {fov:.1f} arcmin. Discover nearby stars or interesting cloud structure."
+)
 
 suggest_tab1, suggest_tab2 = st.tabs(["Nearby compact stars", "Morphology regions"])
 
