@@ -2,232 +2,381 @@
 
 **FORGE = Field Observation, Retrieval, Generation, and Evaluation**
 
-FORGE is a coordinate-driven astronomy platform for discovering archival observations, generating reproducible analysis products, and evaluating evidence across multiple physical regimes.
+FORGE is a coordinate-driven astronomy platform for discovering archival observations, retrieving multi-wavelength data, generating reproducible analysis products, and evaluating astronomical evidence across imaging, spectroscopy, morphology, historical archives, and radio datasets.
 
-FORGE began as an Orion molecular-cloud workflow in the NASA Fornax environment and has expanded into a web-accessible, multi-archive research platform with portable storage, persistent targets, morphology analysis, spectroscopy discovery, and multi-wavelength data retrieval.
+FORGE began as an Orion molecular-cloud workflow in the NASA Fornax environment and has evolved into a public web-accessible research platform.
 
 > **See something interesting → locate it → ask what has observed it → generate evidence.**
 
 ## Current status
 
-**FORGE Web v0.5 is under active development.**
+**FORGE Web v0.11 — public alpha**
 
-The project currently includes:
+Live application:
 
-- a public GitHub repository
-- a Streamlit web front end
-- persistent target handling
-- suggested target generation
-- archive discovery
-- SDSS + 2MASS multi-band visualization
-- MAST discovery / preview development
+**https://forge-astronomy-rpjevm5zy6an8falnxcyvx.streamlit.app/**
+
+Repository:
+
+**terrytrevino/FORGE-astronomy**
+
+The current public alpha supports:
+
+- coordinate-driven target selection
+- saved and reference targets
+- Gaia and 2MASS nearby-star suggestions
+- morphology-region suggestions
+- SDSS optical and 2MASS J/H/Ks visualization
+- MAST multi-mission archive discovery
+- MAST preview imagery
+- real MAST 1-D spectrum discovery and plotting
+- SDSS spectroscopy
+- real APOGEE DR17 spectrum retrieval and plotting
+- IRSA / 2MASS / AllWISE discovery
 - ALMA archive discovery
-- portable local or S3-compatible storage
-- reproducible JSON / CSV analysis outputs
+- NRAO radio-archive discovery with fail-fast timeout handling
+- radio spectral-line triage
+- DSS / historical sky-survey discovery
+- Harvard DASCH exposure discovery
+- local and S3-compatible project storage
+- downloadable CSV / JSON analysis products
+- reproducible archive and analysis provenance
 
-The science engine and front end are intentionally separated so that NASA Fornax is one supported environment rather than the only way to use FORGE.
+FORGE remains an active research and software-development project. v0.11 is being treated as a functional checkpoint before the next feature cycle.
 
-## What FORGE does
+## Core workflow
 
-A FORGE study can begin with one sky position:
+A FORGE investigation can begin with a single coordinate:
 
 ```text
 RA / Dec
    ↓
-Saved / suggested target selection
+Target identity / saved target
    ↓
 Archive discovery
    ↓
-Retrieve available observations
+Suggested nearby stars and morphology regions
    ↓
-Generate aligned science products
+Retrieve available imaging / spectra
    ↓
-Evaluate morphology / spectra / physical context
+Analyze point source or local morphology
    ↓
-Save results to local or object storage
+Compare wavelength regimes
    ↓
-Export reproducible figures, tables, and provenance
+Save figures, metadata, CSV / JSON, and provenance
 ```
+
+The design principle is simple:
+
+**one coordinate → many archives → reproducible evidence.**
 
 ## FORGE Web
 
-The current Streamlit interface provides:
-
 ### Target handling
 
+The current Streamlit interface supports:
+
+- manual target name + RA / Dec entry
 - saved / reference target dropdown
-- new target RA / Dec entry
 - persistent target library
-- uploaded candidate CSV support
-- known Orion reference targets
+- uploaded candidate CSV files
+- known Orion validation targets
+
+Known Orion references include:
+
+| Target | APOGEE ID | RA (deg) | Dec (deg) |
+|---|---|---:|---:|
+| target_01 | 2M05351344-0523402 | 83.806016 | -5.394502 |
+| target_02 | 2M05352004-0525375 | 83.833500 | -5.427083 |
+| target_03 | 2M05351427-0524246 | 83.809458 | -5.406833 |
 
 ### Suggested targets
 
-FORGE can currently generate two kinds of suggestions:
+FORGE currently produces two complementary suggestion classes.
 
-- **Nearby compact stars** — ranked from 2MASS point-source data
-- **Morphology regions** — high-gradient structures identified from the local 2MASS K field
+**Nearby compact stars**
+- 2MASS point-source candidates
+- Gaia DR3 candidates
 
-Suggested coordinates can be downloaded as CSV files and promoted into the analysis workflow.
+**Morphology regions**
+- high-gradient structures identified from the local 2MASS K field
+- useful for cloud edges, rims, pillars, diffuse structure, and non-point-source analysis
 
-### Archive Discovery
+This intentionally separates **point-source science** from **morphology-region science**.
 
-FORGE currently queries:
+## Archive discovery
 
-- **MAST**
-  - JWST
-  - HST
-  - HLA
-  - HLSP
-  - other MAST-hosted observations
-- **SDSS spectroscopy**
-- **IRSA**
-  - 2MASS PSC
-  - AllWISE
-- **ALMA**
+FORGE can currently query or inspect:
 
-The discovery stage intentionally returns a compact manifest before large files are downloaded.
+### MAST
+- HST
+- JWST
+- IUE
+- HLA
+- HLSP
+- other MAST-hosted holdings
 
-A major design goal is that **spectroscopy should always be checked when a target is searched**.
+FORGE can:
+- summarize mission holdings near a target
+- preview selected MAST image products
+- search candidate MAST FITS spectral products
+- parse and plot compatible 1-D wavelength / flux spectra
+- export plotted spectra as CSV
 
-### Multi-band analysis
+### SDSS
+- optical image retrieval
+- spectroscopic target search
+- 1-D spectral plotting when a match exists
 
-The current web interface retrieves and displays:
+### APOGEE DR17
+FORGE can retrieve and plot real APOGEE H-band spectra for matched science targets.
 
-- SDSS optical imagery
+**Validated example:** Orion `target_01` successfully retrieves and renders its real APOGEE DR17 spectrum.
+
+### IRSA
+- 2MASS PSC
+- AllWISE
+
+### ALMA
+- public science-dataset discovery
+- observation metadata around the target field
+
+### NRAO / radio
+The current radio layer supports:
+- NRAO archive discovery paths for facilities such as VLA, VLBA, and GBT
+- timeout protection so unavailable archive services do not freeze the app
+- preliminary spectral-line triage using channel count, product type, spectral resolution, and related metadata
+
+The triage labels products as candidates such as **LIKELY SPECTRAL**, **POSSIBLE**, or **CONTINUUM / UNCLEAR**. These labels indicate product capability, not a confirmed molecular or atomic line detection.
+
+### Historical astronomy
+Current historical discovery includes:
+- DSS / DSS2
+- Harvard DASCH exposure discovery
+
+These provide a path toward long-baseline historical comparisons and plate-based studies.
+
+## Spectroscopy
+
+Spectroscopy is now a first-class FORGE workflow rather than a demonstration-only feature.
+
+Current capabilities:
+
+- SDSS optical spectrum retrieval
+- APOGEE DR17 H-band spectrum retrieval
+- MAST spectral-product discovery
+- generic parsing of common FITS wavelength / flux structures
+- real spectrum plotting
+- optional common optical line markers
+- downloadable wavelength / flux CSV files
+
+### Current validation cases
+
+**Orion target_01**
+- real APOGEE DR17 spectrum successfully retrieved
+- wavelength and flux parsed and plotted correctly
+
+**θ¹ Orionis C / Orion Nebula field**
+- SDSS: no spectroscopic match
+- APOGEE DR17: no target match
+- MAST: rich archive coverage
+- MAST previews: successfully rendered
+- MAST spectroscopy: 10 candidate spectral products discovered and a real spectrum successfully plotted
+- ALMA: large public observation inventory in the field
+
+This field is now a primary validation case for future emission-line and source-versus-nebula spectroscopy workflows.
+
+## Multi-band imaging
+
+The web interface currently retrieves and displays:
+
+- SDSS optical
 - 2MASS J
 - 2MASS H
 - 2MASS Ks
 
-FORGE also includes a morphology-region mode that measures local azimuthal background asymmetry.
+The Orion tests demonstrate why multi-wavelength comparison matters: optical imagery can become difficult to interpret in bright nebulosity while the near-infrared 2MASS bands may reveal substantially clearer local structure.
+
+## Morphology and local environment
+
+FORGE includes:
+
+- point-source analysis
+- aperture / background measurements
+- radial and azimuthal structure analysis
+- local-background asymmetry
+- contrast and overlay products
+- morphology candidate generation
+
+A key Orion result was that `target_01` lies in a substantially more asymmetric and structured local infrared background than the comparison targets, reinforcing the need to distinguish stellar measurements from environmental structure.
 
 ## Storage architecture
 
-FORGE is designed so that analysis is not tied to one computer or one cloud.
+FORGE is designed so the science workflow is not tied to one computer or cloud provider.
 
 Current storage backends:
 
 - local application storage
 - S3-compatible object storage
 
-The long-term model is:
+Conceptual model:
 
 ```text
 FORGE Web
    |
+   +-- Local project storage
    +-- AWS S3
    +-- S3-compatible object storage
-   +-- Fornax object storage
+   +-- Fornax-compatible object storage
    +-- future: Google Cloud Storage
    +-- future: Azure Blob Storage
 ```
 
-Credentials are not stored in the repository or entered directly into the public interface. Production credentials should be supplied through the hosting platform's secure secret-management system.
+Credentials are not stored in the repository. Production credentials should be supplied through the hosting platform's secret-management system.
 
-Typical stored project structure:
+Typical project structure:
 
 ```text
 forge/
-└── orion/
+└── project/
     └── targets/
-        └── target_01/
-            ├── sdss.jpg
-            ├── 2mass_J.png
-            ├── 2mass_H.png
-            ├── 2mass_K.png
+        └── target_name/
+            ├── imagery
+            ├── spectra
             ├── analysis.json
             └── archive_manifest.json
 ```
 
 ## Current science modules
 
-- **Catalog / target handling**
-- **Persistent target library**
-- **Suggested target discovery**
-- **Morphology**
-- **Radial / azimuthal structure analysis**
-- **Contrast**
-- **Overlays**
-- **Metrics**
-- **Molecular-line analysis**
-- **Spectral extraction**
-- **Archive discovery**
-- **Portable storage**
-- **Streamlit web interface**
-- **Jupyter / Fornax dashboard**
+- target / catalog handling
+- persistent target library
+- nearby-star suggestions
+- morphology-region suggestions
+- archive discovery
+- SDSS imaging
+- 2MASS J / H / Ks imaging
+- point-source analysis
+- morphology analysis
+- radial / azimuthal structure analysis
+- contrast and overlays
+- SDSS spectroscopy
+- APOGEE spectroscopy
+- MAST spectroscopy
+- radio spectral-product triage
+- historical-survey discovery
+- portable storage
+- Streamlit web interface
+- Jupyter / NASA Fornax workflow
+
+## Development milestones
+
+### Completed in the current public alpha
+
+**Milestone 1 — Core science workflow**
+- coordinate-driven analysis
+- multi-band Orion validation
+- photometry and local-environment analysis
+- reusable Fornax / Python workflow
+
+**Milestone 2 — Public web app**
+- Streamlit deployment
+- public access without a Fornax account
+- dark high-contrast interface
+- persistent/reference target workflow
+
+**Milestone 3 — Multi-archive discovery**
+- MAST
+- SDSS
+- IRSA
+- ALMA
+- radio discovery paths
+- historical survey discovery
+
+**Milestone 4 — Candidate generation**
+- 2MASS compact-star suggestions
+- Gaia DR3 suggestions
+- morphology-region suggestions
+
+**Milestone 5 — Real spectroscopy**
+- SDSS spectrum plotting
+- APOGEE DR17 real-target validation
+- MAST real-spectrum validation
+
+**Milestone 6 — Radio spectral triage**
+- archive-query framework
+- spectral-capability scoring
+- responsive timeout behavior
+
+**Milestone 7 — Portable storage**
+- local
+- S3-compatible
+- saved manifests and analysis outputs
+
+## Next milestone cycle
+
+The next development cycle is expected to focus on:
+
+1. **Spectrum selection and explanation**
+   - choose among multiple archive spectra
+   - instrument / wavelength-range summaries
+   - atomic and molecular line identification
+   - educational explanations
+   - abundance context where scientifically supported
+
+2. **Unified source identity**
+   - coordinate cross-matching across Gaia, 2MASS, APOGEE, SDSS, and related catalogs
+   - match separation / confidence
+   - one FORGE source card per astronomical object
+
+3. **Student Mode**
+   - guided workflow
+   - simplified controls
+   - instructional prompts
+   - exportable classroom results
+
+4. **Archive-result cleanup**
+   - readable summary tables first
+   - raw JSON / technical metadata retained under Advanced details
+
+5. **Radio spectral products**
+   - move from metadata triage toward actual spectral-cube / spectral-product visualization where archive services permit
 
 ## Demonstration science cases
 
 ### Orion A
+Three APOGEE-selected Orion targets were used to develop and validate the core point-source and local-environment workflow.
 
-Three APOGEE-selected Orion targets were used to develop and validate the point-source and local-environment workflow.
-
-| Target | RA (deg) | Dec (deg) | Purpose |
-|---|---:|---:|---|
-| target_01 | 83.806016 | -5.394502 | Orion candidate / structured environment |
-| target_02 | 83.833500 | -5.427083 | Orion comparison |
-| target_03 | 83.809458 | -5.406833 | Orion comparison |
-
-The workflow now includes:
-
-- SDSS optical imaging
-- 2MASS J / H / Ks
-- aperture photometry
-- catalog colors
-- local background asymmetry
-- archive discovery
-- candidate generation
+### θ¹ Orionis C / M42
+Used to validate a dense multi-archive field, MAST image previews, MAST spectroscopy, ALMA discovery, and future emission-line analysis.
 
 ### OMC-2/3
-
-A comparison field was used to extend the morphology workflow into molecular-cloud structure and molecular-line analysis.
+Used to extend the morphology workflow into molecular-cloud structure and molecular-line science.
 
 ### M45 / Merope
-
-An independent reflection-nebula validation showed wavelength-dependent asymmetry that persisted under progressively larger stellar masks.
+An independent reflection-nebula case used to test wavelength-dependent morphology.
 
 ### WASP-39 b
+An exoplanet-oriented branch exploring stellar abundance context and atmospheric observations.
 
-A prestaged exoplanet branch demonstrates host-star abundance context alongside JWST atmospheric detections.
-
-## Data sources used or being integrated
-
-- SDSS
-- 2MASS
-- WISE / AllWISE
-- DSS2
-- Gaia
-- MAST
-- HST
-- JWST
-- HLA
-- HLSP
-- ALMA
-- CARMA–NRO Orion Survey
-- NASA Exoplanet Archive
-
-Planned archive expansion includes NRAO / VLA / VLASS / GBT / VLBA and additional spectroscopy sources.
-
-Large archival science products are **not stored in this repository**. FORGE records provenance and retrieves or references source data from their originating archives.
-
-## Repository structure
+## Repository architecture
 
 Current direction:
 
 ```text
 FORGE-astronomy/
-├── webapp/         # Streamlit front end
+├── webapp/         # public Streamlit front end
 ├── forge/          # reusable science engine (planned consolidation)
-├── examples/       # example workflows and target definitions
-├── tests/          # reproducibility / regression tests
+├── examples/       # target definitions / demonstration workflows
+├── tests/          # reproducibility and regression testing
 ├── docs/           # methods, architecture, provenance
 ├── README.md
 └── CITATION.cff
 ```
 
-The goal is to keep the science engine separate from the user interface so future web, desktop, Jupyter, and packaged-app clients can call the same FORGE Core.
+The long-term architecture separates the science engine from the user interface so future web, Jupyter, desktop, API, and mobile clients can use the same FORGE Core.
 
-## Running the web app locally
+## Running locally
 
 From the repository root:
 
@@ -236,9 +385,9 @@ pip install -r webapp/requirements.txt
 streamlit run webapp/app.py
 ```
 
-## Streamlit Community Cloud deployment
+## Deployment
 
-The current deployment configuration is:
+Current Streamlit Community Cloud configuration:
 
 ```text
 Repository: terrytrevino/FORGE-astronomy
@@ -246,48 +395,47 @@ Branch:     main
 Main file:  webapp/app.py
 ```
 
-If the Streamlit deployment is configured as public, users can access the app directly through its `.streamlit.app` URL without using NASA Fornax.
+Live public alpha:
+
+**https://forge-astronomy-rpjevm5zy6an8falnxcyvx.streamlit.app/**
 
 ## Reproducibility
 
 FORGE aims to preserve:
 
 - sky coordinates
-- target definitions
+- target identity
 - candidate-selection provenance
 - archive / telescope provenance
-- exact input products
+- exact retrieved products
 - analysis parameters
 - CSV / JSON summaries
+- spectrum wavelength / flux exports
 - figures
 - software version information
 - storage project paths
 
 The goal is not merely to produce an attractive image or plot, but to make the path from coordinates to evidence auditable.
 
-## Development
-
-**FORGE was developed by D. Terry Trevino and Vivian Hom.**
-
 ## Contributors
 
-- **D. Terry Trevino** — co-developer; project architecture, astronomy workflow, systems integration, analysis design, and scientific interpretation
-- **Vivian Hom** — co-developer; astronomy workflow development, testing, analysis, validation, and scientific interpretation
+**FORGE was co-developed by D. Terry Trevino and Vivian Hom.**
+
+- **D. Terry Trevino** — co-developer; project architecture, astronomy workflow, systems integration, analysis design, scientific interpretation
+- **Vivian Hom** — co-developer; astronomy workflow development, testing, analysis, validation, scientific interpretation
 
 The project has used ChatGPT (OpenAI) for coding assistance, debugging, workflow design, analysis support, documentation, and presentation drafting. Scientific decisions, interpretation, validation, and authorship remain with the human investigators.
 
-## Public repository
-
-The source repository is currently public:
-
-`terrytrevino/FORGE-astronomy`
-
-FORGE remains under active research and software development. APIs, file layouts, analysis methods, and the web interface may change while the first stable public release is prepared.
-
 ## Citation
 
-A formal software citation and DOI will be added with the first tagged public release.
+See `CITATION.cff` for the current software citation metadata.
+
+A DOI may be added with a future tagged release / archival deposit.
 
 ## License
 
 A software license will be selected before the first stable public release.
+
+---
+
+**Checkpoint:** FORGE Web v0.11 public alpha — October 2026.
