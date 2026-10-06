@@ -671,6 +671,79 @@ if uploaded is not None:
         st.warning(f"Could not read CSV: {exc}")
 
 
+# FORGE_GUIDED_WORKFLOW
+st.subheader("Start Here")
+st.caption("FORGE will guide you from target selection to a shareable evidence brief.")
+
+has_archives = bool(st.session_state.get("forge_field_brief_archives"))
+has_analysis = bool(st.session_state.get("forge_field_brief_analysis"))
+has_spectrum = bool(st.session_state.get("forge_field_brief_spectrum"))
+
+workflow_rows = [
+    {
+        "step": "1",
+        "status": "✓" if name and np.isfinite(ra) and np.isfinite(dec) else "→",
+        "action": "Choose or resolve a target",
+        "why": "Establish the sky position FORGE will use across every archive.",
+    },
+    {
+        "step": "2",
+        "status": "✓" if has_archives else "→",
+        "action": "Search All Archives",
+        "why": "See what observations exist before downloading or interpreting anything.",
+    },
+    {
+        "step": "3",
+        "status": "✓" if has_spectrum else "○",
+        "action": "Check spectroscopy",
+        "why": "Retrieve a real spectrum when SDSS, APOGEE, or MAST coverage exists.",
+    },
+    {
+        "step": "4",
+        "status": "✓" if has_analysis else "○",
+        "action": "Acquire + Analyze",
+        "why": "Compare optical/IR context and run point-source or morphology analysis.",
+    },
+    {
+        "step": "5",
+        "status": "✓" if (has_archives and (has_analysis or has_spectrum)) else "○",
+        "action": "Review the FORGE Field Brief",
+        "why": "Synthesize the evidence, provenance, and remaining unknowns.",
+    },
+]
+
+st.dataframe(
+    pd.DataFrame(workflow_rows),
+    use_container_width=True,
+    hide_index=True,
+)
+
+if not has_archives:
+    st.info("**Next best action:** scroll to **Archive Discovery** and click **Search All Archives**.")
+elif not has_spectrum and not has_analysis:
+    st.info(
+        "**Next best action:** check **Spectroscopy** for a real spectrum, "
+        "then run **Acquire + Analyze**."
+    )
+elif not has_analysis:
+    st.info("**Next best action:** run **Acquire + Analyze** to add imaging/morphology context.")
+else:
+    st.success(
+        "**You have enough evidence for a first Field Brief.** "
+        "Scroll to **FORGE Field Brief** to review and download it."
+    )
+
+with st.expander("What should I do after that?", expanded=False):
+    st.write(
+        "**Optional exploration:** use **Explore Nearby Targets & Structure** after the main target is established. "
+        "That section is for follow-up stars and morphology regions, not the required first step."
+    )
+    st.write(
+        "**Historical + Radio Discovery** is useful when you want longer time baselines, radio/mm context, "
+        "or a deeper follow-up after the main archive inventory."
+    )
+
+st.divider()
 
 st.subheader("Explore Nearby Targets & Structure")
 st.caption(
