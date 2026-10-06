@@ -55,6 +55,16 @@ This checklist is for the professor / team public-alpha evaluation build of FORG
 
 ## Next feature cycle
 
+- **Sky Context / Finder Charts**
+  - target-centered finder chart
+  - adjustable field of view
+  - target marker, coordinates, scale, and orientation
+  - standard survey background
+  - Gaia / 2MASS / SIMBAD overlays
+  - FORGE nearby-source / morphology overlays
+  - archive footprints where available
+  - Field Brief export
+  - optional Open in Aladin handoff
 - richer PDF / visual Field Briefs
 - unified Gaia ↔ 2MASS ↔ APOGEE ↔ SDSS source identity
 - selectable spectra instead of first-parseable selection
