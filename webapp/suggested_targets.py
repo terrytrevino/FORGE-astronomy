@@ -31,7 +31,7 @@ def _suggest_from_gaia(coord, radius_arcmin=6.0, limit=8):
     """Fallback compact-star suggestions using Gaia DR3."""
     radius = float(radius_arcmin) * u.arcmin
     try:
-        job = Gaia.cone_search_async(coord, radius)
+        job = Gaia.cone_search_async(coord, radius=radius)
         table = job.get_results()
     except Exception as exc:
         return pd.DataFrame(), str(exc)
