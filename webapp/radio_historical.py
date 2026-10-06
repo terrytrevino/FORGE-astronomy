@@ -121,8 +121,20 @@ def discover_dasch(ra_deg, dec_deg, max_rows=12):
         return out
 
 
-def discover_nrao(ra_deg, dec_deg, radius_arcmin=60.0, max_rows=20, attempts=2):
-    """Query NRAO TAP with explicit network timeouts so the UI cannot spin indefinitely."""
+def discover_nrao(
+    ra_deg,
+    dec_deg,
+    radius_arcmin=60.0,
+    max_rows=20,
+    attempts=2,
+    read_timeout=18,
+):
+    """Query the NRAO ObsCore TAP service with bounded response time.
+
+    The positional test follows NRAO/VO guidance by intersecting the requested
+    sky circle with each observation footprint (s_region), rather than requiring
+    an observation pointing center to fall inside the search cone.
+    """
     out = {
         "archive": "NRAO radio",
         "status": "OK",
@@ -142,19 +154,14 @@ def discover_nrao(ra_deg, dec_deg, radius_arcmin=60.0, max_rows=20, attempts=2):
         obs_publisher_did,
         freq_min,
         freq_max,
-        center_frequencies,
-        bandwidths,
         nums_channels,
         spectral_resolutions,
-        aggregate_bandwidth,
-        t_min,
-        t_max,
         access_url
     FROM ivoa.obscore
-    WHERE 1=CONTAINS(
-        POINT('ICRS', s_ra, s_dec),
-        CIRCLE('ICRS', {float(ra_deg)}, {float(dec_deg)}, {radius_deg})
-    )
+    WHERE INTERSECTS(
+        CIRCLE('ICRS', {float(ra_deg)}, {float(dec_deg)}, {radius_deg}),
+        s_region
+    ) = 1
     """
 
     last_error = None
@@ -170,7 +177,7 @@ def discover_nrao(ra_deg, dec_deg, radius_arcmin=60.0, max_rows=20, attempts=2):
                     "FORMAT": "csv",
                     "QUERY": query,
                 },
-                timeout=(6, 18),
+                timeout=(5, float(read_timeout)),
             )
             response.raise_for_status()
 
@@ -197,13 +204,8 @@ def discover_nrao(ra_deg, dec_deg, radius_arcmin=60.0, max_rows=20, attempts=2):
                     "obs_publisher_did",
                     "freq_min",
                     "freq_max",
-                    "center_frequencies",
-                    "bandwidths",
                     "nums_channels",
                     "spectral_resolutions",
-                    "aggregate_bandwidth",
-                    "t_min",
-                    "t_max",
                     "access_url",
                 ]:
                     if key in df.columns:
