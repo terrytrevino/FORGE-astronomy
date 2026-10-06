@@ -6,23 +6,33 @@ from astropy.wcs import WCS
 
 from astroquery.ipac.irsa import Irsa
 from astroquery.skyview import SkyView
+from astroquery.gaia import Gaia
+import time
 
 
-def suggest_compact_stars(ra_deg, dec_deg, radius_arcmin=6.0, limit=8):
-    """Return nearby 2MASS point sources ranked by bright Ks magnitude."""
-    coord = SkyCoord(
-        ra=float(ra_deg) * u.deg,
-        dec=float(dec_deg) * u.deg,
-        frame="icrs",
-    )
+def _query_2mass_with_retry(coord, radius, attempts=2):
+    last_error = None
+    for attempt in range(attempts):
+        try:
+            return Irsa.query_region(
+                coord,
+                catalog="fp_psc",
+                spatial="Cone",
+                radius=radius,
+            ), None
+        except Exception as exc:
+            last_error = exc
+            if attempt < attempts - 1:
+                time.sleep(1.2)
+    return None, last_error
 
+
+def _suggest_from_gaia(coord, radius_arcmin=6.0, limit=8):
+    """Fallback compact-star suggestions using Gaia DR3."""
+    radius = float(radius_arcmin) * u.arcmin
     try:
-        table = Irsa.query_region(
-            coord,
-            catalog="fp_psc",
-            spatial="Cone",
-            radius=float(radius_arcmin) * u.arcmin,
-        )
+        job = Gaia.cone_search_async(coord, radius)
+        table = job.get_results()
     except Exception as exc:
         return pd.DataFrame(), str(exc)
 
@@ -39,20 +49,15 @@ def suggest_compact_stars(ra_deg, dec_deg, radius_arcmin=6.0, limit=8):
             src = SkyCoord(ra=ra * u.deg, dec=dec * u.deg)
             sep = coord.separation(src).arcsec
 
-            j = float(row["j_m"]) if "j_m" in cols else np.nan
-            h = float(row["h_m"]) if "h_m" in cols else np.nan
-            k = float(row["k_m"]) if "k_m" in cols else np.nan
-
             rows.append({
-                "target_id": str(row["designation"]) if "designation" in cols else "2MASS",
+                "target_id": f"Gaia_DR3_{row['source_id']}" if "source_id" in cols else "Gaia_DR3",
                 "ra_deg": ra,
                 "dec_deg": dec,
                 "separation_arcsec": sep,
-                "j_mag": j,
-                "h_mag": h,
-                "ks_mag": k,
-                "ph_qual": str(row["ph_qual"]) if "ph_qual" in cols else "",
-                "cc_flg": str(row["cc_flg"]) if "cc_flg" in cols else "",
+                "g_mag": float(row["phot_g_mean_mag"]) if "phot_g_mean_mag" in cols else np.nan,
+                "bp_mag": float(row["phot_bp_mean_mag"]) if "phot_bp_mean_mag" in cols else np.nan,
+                "rp_mag": float(row["phot_rp_mean_mag"]) if "phot_rp_mean_mag" in cols else np.nan,
+                "source_catalog": "Gaia DR3 fallback",
             })
         except Exception:
             continue
@@ -61,21 +66,104 @@ def suggest_compact_stars(ra_deg, dec_deg, radius_arcmin=6.0, limit=8):
     if df.empty:
         return df, None
 
-    # Prefer clean, good-quality sources, then bright Ks.
-    def qscore(x):
-        s = str(x)
-        return sum(1 for c in s if c == "A")
-
-    df["quality_score"] = df["ph_qual"].apply(qscore)
-    df["clean_score"] = (df["cc_flg"] == "000").astype(int)
-
     df = df.sort_values(
-        by=["clean_score", "quality_score", "ks_mag", "separation_arcsec"],
-        ascending=[False, False, True, True],
+        by=["g_mag", "separation_arcsec"],
+        ascending=[True, True],
         na_position="last",
     ).head(limit)
 
-    return df.drop(columns=["quality_score", "clean_score"]), None
+    return df, None
+
+
+def suggest_compact_stars(ra_deg, dec_deg, radius_arcmin=6.0, limit=8):
+    """
+    Return nearby compact-star candidates.
+
+    Primary source: 2MASS PSC via IRSA.
+    Fallback source: Gaia DR3 if IRSA is unavailable or returns no usable rows.
+    """
+    coord = SkyCoord(
+        ra=float(ra_deg) * u.deg,
+        dec=float(dec_deg) * u.deg,
+        frame="icrs",
+    )
+
+    table, irsa_error = _query_2mass_with_retry(
+        coord,
+        float(radius_arcmin) * u.arcmin,
+        attempts=2,
+    )
+
+    if table is not None and len(table) > 0:
+        rows = []
+        cols = table.colnames
+
+        for row in table:
+            try:
+                ra = float(row["ra"])
+                dec = float(row["dec"])
+                src = SkyCoord(ra=ra * u.deg, dec=dec * u.deg)
+                sep = coord.separation(src).arcsec
+
+                j = float(row["j_m"]) if "j_m" in cols else np.nan
+                h = float(row["h_m"]) if "h_m" in cols else np.nan
+                k = float(row["k_m"]) if "k_m" in cols else np.nan
+
+                rows.append({
+                    "target_id": str(row["designation"]) if "designation" in cols else "2MASS",
+                    "ra_deg": ra,
+                    "dec_deg": dec,
+                    "separation_arcsec": sep,
+                    "j_mag": j,
+                    "h_mag": h,
+                    "ks_mag": k,
+                    "ph_qual": str(row["ph_qual"]) if "ph_qual" in cols else "",
+                    "cc_flg": str(row["cc_flg"]) if "cc_flg" in cols else "",
+                    "source_catalog": "2MASS PSC",
+                })
+            except Exception:
+                continue
+
+        df = pd.DataFrame(rows)
+
+        if not df.empty:
+            def qscore(x):
+                s = str(x)
+                return sum(1 for ch in s if ch == "A")
+
+            df["quality_score"] = df["ph_qual"].apply(qscore)
+            df["clean_score"] = (df["cc_flg"] == "000").astype(int)
+
+            df = df.sort_values(
+                by=["clean_score", "quality_score", "ks_mag", "separation_arcsec"],
+                ascending=[False, False, True, True],
+                na_position="last",
+            ).head(limit)
+
+            return df.drop(columns=["quality_score", "clean_score"]), None
+
+    # Resilient fallback: Gaia DR3.
+    gaia_df, gaia_error = _suggest_from_gaia(
+        coord,
+        radius_arcmin=radius_arcmin,
+        limit=limit,
+    )
+
+    if not gaia_df.empty:
+        note = None
+        if irsa_error is not None:
+            note = f"IRSA unavailable; using Gaia DR3 fallback. IRSA error: {irsa_error}"
+        else:
+            note = "No usable 2MASS rows; using Gaia DR3 fallback."
+        return gaia_df, note
+
+    combined = []
+    if irsa_error is not None:
+        combined.append(f"IRSA: {irsa_error}")
+    if gaia_error:
+        combined.append(f"Gaia: {gaia_error}")
+
+    return pd.DataFrame(), " | ".join(combined) if combined else None
 
 
 def suggest_morphology_regions(
