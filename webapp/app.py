@@ -324,12 +324,15 @@ with suggest_tab1:
             star_df, star_err = suggest_compact_stars(
                 ra, dec, radius_arcmin=max(3.0, fov), limit=8
             )
-            if star_err:
+            if star_err and star_df.empty:
                 st.error(f"Compact-star search failed: {star_err}")
-            elif star_df.empty:
-                st.info("No nearby compact stars found.")
             else:
-                st.dataframe(star_df, use_container_width=True)
+                if star_err:
+                    st.warning(star_err)
+                if star_df.empty:
+                    st.info("No nearby compact stars found.")
+                else:
+                    st.dataframe(star_df, use_container_width=True)
                 st.download_button(
                     "Download compact-star candidates",
                     star_df.to_csv(index=False).encode("utf-8"),
