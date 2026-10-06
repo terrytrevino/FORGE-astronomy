@@ -1889,14 +1889,17 @@ else:
     st.text_input(
         "Shareable link",
         value=share_url,
-        key="forge_field_brief_share_url",
-        help="Anyone with this link can open the compact Field Brief without rerunning the analysis.",
+        key=f"forge_field_brief_share_url_{share_token[:16]}",
+        help=(
+            "This link is regenerated whenever the attached archive, analysis, "
+            "or spectroscopy evidence changes."
+        ),
     )
     st.markdown(f"[Open shared brief in a new view →]({share_url})")
 
     st.caption(
-        "Field Brief v0.1 is evidence-driven from the current FORGE session. "
-        "Shareable web/PDF briefs and richer image/spectrum panels are the next iteration."
+        "Field Brief v0.12 is generated from the evidence attached to the current FORGE session. "
+        "If you add a spectrum or rerun analysis, use the newly regenerated link."
     )
 
 st.divider()
