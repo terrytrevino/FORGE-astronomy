@@ -364,3 +364,87 @@ def classify_radio_spectral_candidates(details):
     ).drop(columns=["_order"])
 
     return df
+
+
+def discover_casda(ra_deg, dec_deg, radius_arcmin=10.0, max_rows=20):
+    """Query CSIRO ASKAP Science Data Archive (CASDA) public products."""
+    from astroquery.casda import Casda
+
+    out = {
+        "archive": "CASDA / ASKAP",
+        "status": "OK",
+        "count": 0,
+        "summary": "",
+        "details": [],
+    }
+
+    try:
+        coord = SkyCoord(
+            ra=float(ra_deg) * u.deg,
+            dec=float(dec_deg) * u.deg,
+            frame="icrs",
+        )
+        table = Casda.query_region(
+            coord,
+            radius=float(radius_arcmin) * u.arcmin,
+        )
+
+        if table is None:
+            out["summary"] = "No ASKAP products found"
+            return out
+
+        try:
+            table = Casda.filter_out_unreleased(table)
+        except Exception:
+            pass
+
+        out["count"] = int(len(table))
+        if len(table) == 0:
+            out["summary"] = "No public ASKAP products found"
+            return out
+
+        cols = table.colnames
+        details = []
+        for row in table[:max_rows]:
+            item = {}
+            for key in [
+                "obs_collection",
+                "obs_id",
+                "target_name",
+                "dataproduct_type",
+                "dataproduct_subtype",
+                "em_min",
+                "em_max",
+                "s_resolution",
+                "filename",
+                "access_url",
+            ]:
+                if key in cols:
+                    try:
+                        item[key] = str(row[key])
+                    except Exception:
+                        pass
+            details.append(item)
+
+        out["details"] = details
+
+        product_types = []
+        if "dataproduct_type" in cols:
+            product_types = sorted(
+                set(
+                    str(x)
+                    for x in table["dataproduct_type"]
+                    if str(x).strip()
+                )
+            )
+
+        out["summary"] = (
+            f"{len(table)} public ASKAP product(s)"
+            + (f" — {', '.join(product_types[:5])}" if product_types else "")
+        )
+        return out
+
+    except Exception as exc:
+        out["status"] = "ERROR"
+        out["summary"] = str(exc)
+        return out
