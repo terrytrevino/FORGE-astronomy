@@ -325,20 +325,29 @@ def apogee_spectrum_figure(wavelength, flux, show_lines=True):
     ax.grid(alpha=0.2)
 
     if show_lines and len(wavelength):
-        _, ymax = ax.get_ylim()
+        ymin, ymax = ax.get_ylim()
+        yrange = ymax - ymin if ymax > ymin else 1.0
+        visible_index = 0
         for label, wave in APOGEE_REFERENCE_LINES:
             if wavelength.min() <= wave <= wavelength.max():
                 ax.axvline(wave, linewidth=0.6, linestyle="--", alpha=0.5)
+
+                # Keep labels inside the plotting area and stagger them slightly
+                # so neighboring APOGEE lines remain readable.
+                frac = 0.88 if visible_index % 2 == 0 else 0.76
+                y_text = ymin + frac * yrange
                 ax.text(
                     wave,
-                    ymax,
+                    y_text,
                     label,
                     rotation=90,
                     va="top",
                     ha="right",
                     fontsize=7,
-                    alpha=0.82,
+                    alpha=0.88,
+                    clip_on=True,
                 )
+                visible_index += 1
 
     fig.tight_layout()
     return fig
