@@ -682,6 +682,43 @@ with st.sidebar:
             except Exception:
                 pass
 
+    # Rehydrate prior evidence for saved/reference targets so the guided workflow
+    # reflects completed work across browser sessions (including Incognito).
+    if selected_target != "New target":
+        try:
+            saved_analysis = _storage_for_menu.load_json(
+                f"targets/{selected_target}/analysis.json"
+            )
+            if saved_analysis:
+                st.session_state["forge_field_brief_analysis"] = saved_analysis
+        except Exception:
+            pass
+
+        try:
+            saved_archives = _storage_for_menu.load_json(
+                f"targets/{selected_target}/all_archive_manifest.json"
+            )
+            if saved_archives and saved_archives.get("archives"):
+                st.session_state["forge_field_brief_archives"] = saved_archives["archives"]
+        except Exception:
+            try:
+                saved_archives = _storage_for_menu.load_json(
+                    f"targets/{selected_target}/archive_manifest.json"
+                )
+                if saved_archives and saved_archives.get("archives"):
+                    st.session_state["forge_field_brief_archives"] = saved_archives["archives"]
+            except Exception:
+                pass
+
+        try:
+            saved_spectrum = _storage_for_menu.load_json(
+                f"targets/{selected_target}/spectrum_summary.json"
+            )
+            if saved_spectrum:
+                st.session_state["forge_field_brief_spectrum"] = saved_spectrum
+        except Exception:
+            pass
+
     # Keep editable target state synchronized when the saved/reference target changes.
     if st.session_state.get("forge_selected_target_prev") != selected_target:
         st.session_state["forge_target_name"] = default_name
@@ -1419,6 +1456,14 @@ with spec_tab1:
                     "archive": "SDSS spectroscopy",
                     "note": "Real archive spectrum retrieved for the active target coordinates.",
                 }
+                try:
+                    _s = build_storage(storage_backend, storage_bucket, storage_prefix)
+                    _s.save_json(
+                        f"targets/{name}/spectrum_summary.json",
+                        st.session_state["forge_field_brief_spectrum"],
+                    )
+                except Exception:
+                    pass
 
                 with st.expander("Spectrum metadata"):
                     st.json(meta)
@@ -1467,6 +1512,14 @@ with spec_tab2:
                     "archive": "SDSS APOGEE DR17",
                     "note": "Real APOGEE spectrum retrieved; FORGE overlays representative line references and quality/spike triage.",
                 }
+                try:
+                    _s = build_storage(storage_backend, storage_bucket, storage_prefix)
+                    _s.save_json(
+                        f"targets/{name}/spectrum_summary.json",
+                        st.session_state["forge_field_brief_spectrum"],
+                    )
+                except Exception:
+                    pass
 
                 st.caption(
                     "Dashed vertical markers identify representative APOGEE H-band atomic fingerprints. "
@@ -1554,6 +1607,14 @@ with spec_tab3:
                         "archive": product.get("obs_collection", "MAST"),
                         "note": "Real MAST spectral product parsed into a 1-D wavelength/flux spectrum.",
                     }
+                    try:
+                        _s = build_storage(storage_backend, storage_bucket, storage_prefix)
+                        _s.save_json(
+                            f"targets/{name}/spectrum_summary.json",
+                            st.session_state["forge_field_brief_spectrum"],
+                        )
+                    except Exception:
+                        pass
 
                     with st.expander("MAST spectrum product metadata"):
                         st.json({**product, **meta})
