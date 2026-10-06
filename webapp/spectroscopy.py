@@ -525,7 +525,7 @@ def apogee_spectrum_figure(wavelength, flux, show_lines=True, quality=None, show
                             marker="^",
                             s=28,
                             alpha=0.8,
-                            label="Unflagged upward outlier — inspect",
+                            label="Candidate spike — verify before interpretation",
                         )
 
         handles, labels = ax.get_legend_handles_labels()
