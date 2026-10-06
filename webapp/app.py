@@ -16,9 +16,11 @@ from suggested_targets import suggest_compact_stars, suggest_compact_star_catalo
 from spectroscopy import fetch_sdss_spectrum, spectrum_dataframe, spectrum_figure, fetch_apogee_spectrum, apogee_spectrum_figure, apogee_feature_guide, apogee_quality_summary, fetch_mast_spectrum_product, generic_spectrum_figure
 from radio_historical import discover_dss, discover_dasch, discover_nrao, discover_casda, get_dss_preview, classify_radio_spectral_candidates
 from name_resolver import resolve_object_name
-from field_brief import archive_inventory_dataframe, discovery_lens_text, unknowns_list, brief_markdown
+from field_brief import archive_inventory_dataframe, discovery_lens_text, unknowns_list, brief_markdown, build_share_payload, encode_brief_payload, decode_brief_payload
 
-st.set_page_config(page_title="FORGE Orion", layout="wide")
+st.set_page_config(page_title="FORGE Astronomy", layout="wide")
+
+FORGE_PUBLIC_APP_URL = "https://forge-astronomy-rpjevm5zy6an8falnxcyvx.streamlit.app/"
 
 
 st.markdown(
@@ -553,6 +555,74 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+# FORGE_SHARED_BRIEF_VIEW
+brief_token = st.query_params.get("brief")
+if brief_token:
+    shared_brief, shared_error = decode_brief_payload(brief_token)
+
+    st.divider()
+    st.subheader("FORGE Field Brief")
+    st.caption("Shared evidence synthesis · FORGE Astronomy v0.12")
+
+    if shared_error:
+        st.error(shared_error)
+        st.markdown(f"[Open FORGE Explorer]({FORGE_PUBLIC_APP_URL})")
+        st.stop()
+
+    sb_name = shared_brief["target_name"]
+    sb_ra = float(shared_brief["ra_deg"])
+    sb_dec = float(shared_brief["dec_deg"])
+    sb_archives = shared_brief.get("archives") or []
+    sb_analysis = shared_brief.get("analysis")
+    sb_spectrum = shared_brief.get("spectrum")
+
+    st.markdown(f"## {sb_name}")
+    st.write(f"**RA:** {sb_ra:.6f}°   **Dec:** {sb_dec:.6f}°")
+
+    inv = archive_inventory_dataframe(sb_archives)
+    if not inv.empty:
+        st.markdown("### Archive inventory")
+        st.dataframe(inv, use_container_width=True, hide_index=True)
+
+    st.markdown("### Discovery Lens")
+    st.write(discovery_lens_text(sb_archives, sb_analysis, sb_spectrum))
+
+    ecol1, ecol2 = st.columns(2, gap="large")
+    with ecol1:
+        st.markdown("### Evidence")
+        st.write(
+            f"- Archive inventory: {'Yes' if sb_archives else 'Not attached'}\n"
+            f"- Analysis: {sb_analysis.get('mode', 'Attached') if sb_analysis else 'Not attached'}\n"
+            f"- Spectrum: {sb_spectrum.get('label', 'Attached') if sb_spectrum else 'Not attached'}"
+        )
+
+    with ecol2:
+        st.markdown("### What remains unknown?")
+        for item in unknowns_list(sb_archives, sb_analysis, sb_spectrum):
+            st.write(f"- {item}")
+
+    if sb_analysis and sb_analysis.get("morphology"):
+        st.markdown("### Morphology")
+        st.dataframe(
+            pd.DataFrame(sb_analysis["morphology"]),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+    if sb_spectrum:
+        st.markdown("### Spectroscopy")
+        st.write(f"**{sb_spectrum.get('label', 'Spectrum')}**")
+        if sb_spectrum.get("note"):
+            st.write(sb_spectrum["note"])
+
+    st.divider()
+    st.caption(
+        "This shared brief contains a compact synthesis, not raw archive products. "
+        "Archive imagery, spectra, and metadata remain with their originating observatories."
+    )
+    st.markdown(f"**[Explore this target in FORGE →]({FORGE_PUBLIC_APP_URL})**")
+    st.stop()
 
 with st.sidebar:
     st.header("Storage")
@@ -1743,6 +1813,26 @@ else:
         use_container_width=True,
     )
 
+    share_payload = build_share_payload(
+        name,
+        ra,
+        dec,
+        results=brief_archives,
+        analysis=brief_analysis,
+        spectrum=brief_spectrum,
+    )
+    share_token = encode_brief_payload(share_payload)
+    share_url = f"{FORGE_PUBLIC_APP_URL}?brief={share_token}"
+
+    st.markdown("**Share this Field Brief**")
+    st.text_input(
+        "Shareable link",
+        value=share_url,
+        key="forge_field_brief_share_url",
+        help="Anyone with this link can open the compact Field Brief without rerunning the analysis.",
+    )
+    st.markdown(f"[Open shared brief in a new view →]({share_url})")
+
     st.caption(
         "Field Brief v0.1 is evidence-driven from the current FORGE session. "
         "Shareable web/PDF briefs and richer image/spectrum panels are the next iteration."
@@ -1752,9 +1842,9 @@ st.divider()
 st.markdown(
     """
     <div style="padding:1rem 0 0.25rem 0;color:#b8c7da;font-size:0.83rem;line-height:1.55;">
-      <strong style="color:#eef5ff;">FORGE Astronomy — Web v0.11 public alpha</strong><br>
+      <strong style="color:#eef5ff;">FORGE Astronomy — Web v0.12 public alpha</strong><br>
       Field Observation, Retrieval, Generation, and Evaluation<br>
-      Release checkpoint: October 2026<br>
+      Release checkpoint: October 2026 · shareable Field Brief release<br>
       Co-developed by D. Terry Trevino and Vivian Hom ·
       <a href="https://github.com/terrytrevino/FORGE-astronomy" target="_blank" style="color:#cfe0ff;">source repository</a><br>
       Hero image: M42, Hubble Space Telescope Orion Treasury mosaic ·
