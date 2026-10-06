@@ -1,3 +1,7 @@
+import base64
+import json
+import zlib
+
 import pandas as pd
 
 
@@ -156,3 +160,72 @@ def brief_markdown(target_name, ra_deg, dec_deg, results=None, analysis=None, sp
     ])
 
     return "\n".join(lines)
+
+
+
+def build_share_payload(target_name, ra_deg, dec_deg, results=None, analysis=None, spectrum=None):
+    """Create a compact, share-safe Field Brief payload.
+
+    Only synthesis/provenance data are included; raw spectra/images remain in
+    their originating archives and are not embedded in the URL.
+    """
+    inventory = []
+    for item in results or []:
+        inventory.append({
+            "archive": item.get("archive", ""),
+            "status": item.get("status", ""),
+            "count": item.get("count", 0),
+            "summary": item.get("summary", ""),
+        })
+
+    analysis_compact = None
+    if analysis:
+        analysis_compact = {
+            "mode": analysis.get("mode", ""),
+            "morphology": analysis.get("morphology", []),
+        }
+
+    spectrum_compact = None
+    if spectrum:
+        spectrum_compact = {
+            "label": spectrum.get("label", ""),
+            "archive": spectrum.get("archive", ""),
+            "note": spectrum.get("note", ""),
+        }
+
+    return {
+        "v": "0.12",
+        "target_name": str(target_name),
+        "ra_deg": float(ra_deg),
+        "dec_deg": float(dec_deg),
+        "archives": inventory,
+        "analysis": analysis_compact,
+        "spectrum": spectrum_compact,
+    }
+
+
+def encode_brief_payload(payload):
+    raw = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    compressed = zlib.compress(raw, level=9)
+    return base64.urlsafe_b64encode(compressed).decode("ascii").rstrip("=")
+
+
+def decode_brief_payload(token):
+    try:
+        token = str(token).strip()
+        padding = "=" * (-len(token) % 4)
+        compressed = base64.urlsafe_b64decode((token + padding).encode("ascii"))
+        raw = zlib.decompress(compressed)
+        payload = json.loads(raw.decode("utf-8"))
+
+        if not isinstance(payload, dict):
+            raise ValueError("Field Brief payload is not an object")
+
+        required = ["target_name", "ra_deg", "dec_deg"]
+        missing = [key for key in required if key not in payload]
+        if missing:
+            raise ValueError(f"Missing Field Brief field(s): {', '.join(missing)}")
+
+        return payload, None
+    except Exception as exc:
+        return None, f"Could not decode this FORGE Field Brief link: {exc}"
