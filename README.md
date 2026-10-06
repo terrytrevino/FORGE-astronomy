@@ -10,7 +10,7 @@ FORGE began as an Orion molecular-cloud workflow in the NASA Fornax environment 
 
 ## Current status
 
-**FORGE Web v0.11 — public alpha**
+**FORGE Web v0.12 — public alpha**
 
 Live application:
 
@@ -45,7 +45,8 @@ The current public alpha supports:
 - morphology-region suggestions
 - multi-band SDSS + 2MASS J/H/Ks analysis
 - optional **Discovery Lens** science-context panel
-- **FORGE Field Brief v0.1** — one-page session synthesis of identity, coordinates, archive inventory, analysis, spectroscopy, provenance, and open questions
+- **FORGE Field Brief v0.12** — one-page session synthesis of identity, coordinates, archive inventory, analysis, spectroscopy, provenance, and open questions
+- shareable Field Brief permalink that opens a compact brief without rerunning the analysis
 - local and S3-compatible project storage
 - downloadable CSV / JSON analysis products
 - responsive / narrow-screen layout improvements
@@ -310,7 +311,7 @@ FORGE v0.11 now includes two GitHub Actions release gates:
 - **Python application** — installs the web-app dependencies on Python 3.11 and 3.12, compiles the Python sources, installs the local package, and runs the smoke-test suite.
 - **Python package** — builds a source distribution and wheel, validates the distributions, installs the wheel, verifies the package version, and uploads the build artifacts.
 
-Python package metadata lives in `pyproject.toml`. The initial importable package API is `forge_astronomy`, version `0.11.0`. During the public alpha the Streamlit application remains under `webapp/`; reusable science-engine code will progressively migrate behind the package API.
+Python package metadata lives in `pyproject.toml`. The initial importable package API is `forge_astronomy`, version `0.12.0`. During the public alpha the Streamlit application remains under `webapp/`; reusable science-engine code will progressively migrate behind the package API.
 
 See `RELEASE_CHECKLIST.md` for the team-release gate.
 
@@ -521,4 +522,4 @@ A software license will be selected before the first stable public release.
 
 ---
 
-**Checkpoint:** FORGE Web v0.11 public alpha — professor/team evaluation build — October 6, 2026.
+**Checkpoint:** FORGE Web v0.12 public alpha — professor/team evaluation build — October 6, 2026.
