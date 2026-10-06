@@ -110,10 +110,30 @@ st.markdown(
 st.markdown(
     """
     <style>
-    /* Inactive and active tabs */
+    /* Standardized tab system: full-width, equal tabs on desktop */
+    div[data-baseweb="tab-list"] {
+        display: flex !important;
+        width: 100% !important;
+        gap: 0.35rem !important;
+    }
+
     button[data-baseweb="tab"] {
         color: #DDE7F5 !important;
         font-weight: 600 !important;
+        flex: 1 1 0 !important;
+        justify-content: center !important;
+        text-align: center !important;
+        min-width: 0 !important;
+        border-radius: 9px 9px 0 0 !important;
+        padding-left: 0.7rem !important;
+        padding-right: 0.7rem !important;
+    }
+
+    button[data-baseweb="tab"] > div {
+        width: 100% !important;
+        justify-content: center !important;
+        white-space: normal !important;
+        line-height: 1.2 !important;
     }
     button[data-baseweb="tab"][aria-selected="false"] {
         color: #C7D4E8 !important;
@@ -244,6 +264,18 @@ st.markdown(
     <style>
     /* Improve readability and stacking on phones / narrow browser windows. */
     @media (max-width: 780px) {
+        div[data-baseweb="tab-list"] {
+            overflow-x: auto !important;
+            flex-wrap: nowrap !important;
+            justify-content: flex-start !important;
+        }
+
+        button[data-baseweb="tab"] {
+            flex: 0 0 auto !important;
+            min-width: 8.5rem !important;
+            white-space: nowrap !important;
+        }
+
         .block-container {
             padding-left: 0.8rem !important;
             padding-right: 0.8rem !important;
