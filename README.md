@@ -21,28 +21,35 @@ Repository:
 **terrytrevino/FORGE-astronomy**
 
 The current public alpha supports:
-
+ 
 - coordinate-driven target selection
 - astronomical name resolution through SIMBAD / Sesame fallback
 - saved and reference targets
-- Gaia and 2MASS nearby-star suggestions
-- morphology-region suggestions
-- SDSS optical and 2MASS J/H/Ks visualization
-- unified **Search All Archives** workflow across every integrated observation-archive adapter
+- unified **Search All Archives** workflow across the fast/reliable integrated observation archives
 - MAST multi-mission archive discovery
 - MAST preview imagery
 - real MAST 1-D spectrum discovery and plotting
-- SDSS spectroscopy
+- SDSS optical imaging and spectroscopy
 - real APOGEE DR17 spectrum retrieval and plotting
+- APOGEE H-band reference-line overlays and pixel-quality / candidate-spike teaching layer
 - IRSA / 2MASS / AllWISE discovery
 - ALMA archive discovery
-- NRAO radio-archive discovery with fail-fast timeout handling
-- radio spectral-line triage
-- DSS / historical sky-survey discovery
+- ASKAP / CASDA live radio discovery
+- partner gateways for ASTRON / LOFAR and MeerKAT / SARAO
+- extended NRAO radio discovery as a separate best-effort specialist path
+- radio spectral-line capability triage
+- DSS / DSS2 historical survey discovery and direct image preview
 - Harvard DASCH exposure discovery
+- **Then vs. Now** historical DSS2 vs. SDSS visual comparison
+- Gaia and 2MASS nearby-star suggestions
+- morphology-region suggestions
+- multi-band SDSS + 2MASS J/H/Ks analysis
+- optional **Discovery Lens** science-context panel
 - local and S3-compatible project storage
 - downloadable CSV / JSON analysis products
+- responsive / narrow-screen layout improvements
 - reproducible archive and analysis provenance
+
 
 FORGE remains an active research and software-development project. v0.11 is being treated as a functional checkpoint before the next feature cycle.
 
@@ -160,9 +167,24 @@ The current radio layer supports:
 
 The triage labels products as candidates such as **LIKELY SPECTRAL**, **POSSIBLE**, or **CONTINUUM / UNCLEAR**. These labels indicate product capability, not a confirmed molecular or atomic line detection.
 
+### Radio redundancy strategy
+
+FORGE does not depend on one radio archive.
+
+Current radio/millimeter strategy:
+- **ALMA** — first-class millimeter/submillimeter archive discovery
+- **ASKAP / CASDA** — live public radio-product discovery
+- **ASTRON / LOFAR** — linked VO partner pathway, deeper programmatic integration planned
+- **MeerKAT / SARAO** — linked partner archive pathway, deeper programmatic integration planned
+- **NRAO** — extended VLA / VLBA / GBT / ALMA specialist search kept separate because the TAP endpoint can respond slowly or time out
+
+This layered approach is intentional: a slow external provider should not block the rest of the FORGE workflow.
+
 ### Historical astronomy
 Current historical discovery includes:
-- DSS / DSS2
+- DSS / DSS2 survey-layer discovery
+- direct DSS2 historical image preview
+- side-by-side **Then vs. Now** DSS2 vs. SDSS comparison where SDSS is available
 - Harvard DASCH exposure discovery
 
 These provide a path toward long-baseline historical comparisons and plate-based studies.
@@ -335,6 +357,27 @@ See `RELEASE_CHECKLIST.md` for the team-release gate.
 - S3-compatible
 - saved manifests and analysis outputs
 
+## Team / professor evaluation
+
+FORGE Web v0.11 is now suitable for limited team and faculty evaluation as a **public alpha**.
+
+Recommended evaluation loop:
+
+1. open the live web app
+2. resolve or enter a target
+3. run **Search All Archives**
+4. inspect imagery, spectra, historical context, and radio holdings
+5. report the target/name/coordinates, action taken, expected result, actual result, and any screenshot/error text
+
+Faculty/team feedback should be triaged as:
+- science-method issue
+- archive/data issue
+- software bug
+- UX / accessibility issue
+- feature request
+
+The public-alpha goal is not feature completeness; it is to validate whether the integrated workflow is scientifically useful, understandable, and worth extending.
+
 ## Next milestone cycle
 
 The next development cycle is expected to focus on:
@@ -407,6 +450,16 @@ pip install -r webapp/requirements.txt
 streamlit run webapp/app.py
 ```
 
+## Redundancy and checkpointing
+
+The active development branch is `main`.
+
+A dated backup snapshot was created after the October 6, 2026 release-candidate work:
+
+`backup/v0.11-2026-10-06`
+
+This provides a stable rollback point before professor/team feedback is incorporated.
+
 ## Deployment
 
 Current Streamlit Community Cloud configuration:
@@ -460,4 +513,4 @@ A software license will be selected before the first stable public release.
 
 ---
 
-**Checkpoint:** FORGE Web v0.11 public alpha — October 2026.
+**Checkpoint:** FORGE Web v0.11 public alpha — professor/team evaluation build — October 6, 2026.
