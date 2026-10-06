@@ -45,6 +45,7 @@ The current public alpha supports:
 - morphology-region suggestions
 - multi-band SDSS + 2MASS J/H/Ks analysis
 - optional **Discovery Lens** science-context panel
+- **FORGE Field Brief v0.1** — one-page session synthesis of identity, coordinates, archive inventory, analysis, spectroscopy, provenance, and open questions
 - local and S3-compatible project storage
 - downloadable CSV / JSON analysis products
 - responsive / narrow-screen layout improvements
@@ -382,29 +383,36 @@ The public-alpha goal is not feature completeness; it is to validate whether the
 
 The next development cycle is expected to focus on:
 
-1. **Spectrum selection and explanation**
+1. **FORGE Field Brief**
+   - shareable web permalink
+   - PDF export
+   - best-image / spectrum panels
+   - persistent brief provenance
+   - “what remains unknown?” synthesis
+
+2. **Spectrum selection and explanation**
    - choose among multiple archive spectra
    - instrument / wavelength-range summaries
    - atomic and molecular line identification
    - educational explanations
    - abundance context where scientifically supported
 
-2. **Unified source identity**
+3. **Unified source identity**
    - coordinate cross-matching across Gaia, 2MASS, APOGEE, SDSS, and related catalogs
    - match separation / confidence
    - one FORGE source card per astronomical object
 
-3. **Student Mode**
+4. **Student Mode**
    - guided workflow
    - simplified controls
    - instructional prompts
    - exportable classroom results
 
-4. **Archive-result cleanup**
+5. **Archive-result cleanup**
    - readable summary tables first
    - raw JSON / technical metadata retained under Advanced details
 
-5. **Radio spectral products**
+6. **Radio spectral products**
    - move from metadata triage toward actual spectral-cube / spectral-product visualization where archive services permit
 
 ## Demonstration science cases
