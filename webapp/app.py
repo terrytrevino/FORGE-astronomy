@@ -668,7 +668,129 @@ st.divider()
 st.subheader("Archive Discovery")
 st.caption("Check what exists at this coordinate before downloading large datasets.")
 
-if st.button("Discover archives", type="secondary"):
+if st.button("Search All Archives", type="primary"):
+    with st.spinner(
+        "Searching MAST, SDSS, IRSA, ALMA, DSS, Harvard DASCH, and NRAO radio archives..."
+    ):
+        all_results = []
+
+        try:
+            core_manifest, core_details = discover_archives(
+                ra, dec, discovery_radius
+            )
+            all_results.extend(core_details)
+        except Exception as exc:
+            all_results.append({
+                "archive": "Core archive discovery",
+                "status": "ERROR",
+                "count": 0,
+                "summary": str(exc),
+                "details": [],
+            })
+
+        try:
+            all_results.append(
+                discover_dss(ra, dec, radius_arcmin=max(6.0, fov))
+            )
+        except Exception as exc:
+            all_results.append({
+                "archive": "DSS / photographic plates",
+                "status": "ERROR",
+                "count": 0,
+                "summary": str(exc),
+                "details": [],
+            })
+
+        try:
+            all_results.append(discover_dasch(ra, dec))
+        except Exception as exc:
+            all_results.append({
+                "archive": "Harvard DASCH",
+                "status": "ERROR",
+                "count": 0,
+                "summary": str(exc),
+                "details": [],
+            })
+
+        try:
+            all_results.append(
+                discover_nrao(
+                    ra,
+                    dec,
+                    radius_arcmin=max(1.0, discovery_radius / 60.0),
+                    max_rows=20,
+                )
+            )
+        except Exception as exc:
+            all_results.append({
+                "archive": "NRAO radio",
+                "status": "ERROR",
+                "count": 0,
+                "summary": str(exc),
+                "details": [],
+            })
+
+        all_manifest = pd.DataFrame([
+            {
+                "archive": item.get("archive", ""),
+                "status": item.get("status", ""),
+                "count": item.get("count", 0),
+                "summary": item.get("summary", ""),
+            }
+            for item in all_results
+        ])
+
+        st.dataframe(all_manifest, use_container_width=True)
+
+        total_available = int(
+            sum(
+                int(item.get("count", 0) or 0)
+                for item in all_results
+                if str(item.get("status", "")).upper() in {"OK", "TIMEOUT"}
+            )
+        )
+        st.caption(
+            f"Unified search completed across {len(all_results)} archive services/adapters · "
+            f"{total_available} returned records/layers in the current search windows. "
+            "Counts are archive-specific and should not be summed as unique astrophysical objects."
+        )
+
+        for item in all_results:
+            with st.expander(
+                f"{item.get('archive', 'Archive')} — {item.get('summary', '')}"
+            ):
+                details = item.get("details")
+                if details:
+                    try:
+                        st.dataframe(pd.DataFrame(details), use_container_width=True)
+                    except Exception:
+                        st.json(details)
+                else:
+                    st.write("No additional records.")
+
+        try:
+            storage = build_storage(
+                storage_backend, storage_bucket, storage_prefix
+            )
+            storage.save_json(
+                f"targets/{name}/all_archive_manifest.json",
+                {
+                    "target_name": name,
+                    "ra_deg": ra,
+                    "dec_deg": dec,
+                    "radius_arcsec": discovery_radius,
+                    "archives": all_results,
+                },
+            )
+        except Exception:
+            pass
+
+st.caption(
+    "Search All Archives queries every observation-archive adapter currently integrated in FORGE. "
+    "Gaia and 2MASS source-catalog matching are handled separately under Suggested targets / source identity."
+)
+
+if st.button("Discover core archives", type="secondary"):
     with st.spinner("Querying MAST, SDSS spectroscopy, IRSA, and ALMA..."):
         try:
             manifest, archive_details = discover_archives(
