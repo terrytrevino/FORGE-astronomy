@@ -128,6 +128,7 @@ def discover_nrao(
     max_rows=20,
     attempts=2,
     read_timeout=18,
+    fast_mode=False,
 ):
     """Query the NRAO ObsCore TAP service with bounded response time.
 
@@ -144,25 +145,64 @@ def discover_nrao(
     }
 
     radius_deg = float(radius_arcmin) / 60.0
-    query = f"""
-    SELECT TOP {int(max_rows)}
-        s_ra,
-        s_dec,
-        target_name,
-        instrument_name,
-        dataproduct_type,
-        obs_publisher_did,
-        freq_min,
-        freq_max,
-        nums_channels,
-        spectral_resolutions,
-        access_url
-    FROM ivoa.obscore
-    WHERE INTERSECTS(
-        CIRCLE('ICRS', {float(ra_deg)}, {float(dec_deg)}, {radius_deg}),
-        s_region
-    ) = 1
-    """
+
+    # NRAO currently documents s_region as not in active use. For the unified
+    # FORGE search, use a lightweight numeric candidate query on pointing
+    # centers; the dedicated NRAO control can still request the fuller cone
+    # search. This keeps the all-archive UX responsive.
+    if fast_mode:
+        half_width = max(radius_deg, 0.08)  # >= ~4.8 arcmin candidate box
+        dec_min = max(-90.0, float(dec_deg) - half_width)
+        dec_max = min(90.0, float(dec_deg) + half_width)
+        ra0 = float(ra_deg) % 360.0
+        cosdec = max(0.15, abs(__import__("math").cos(__import__("math").radians(float(dec_deg)))))
+        ra_half = half_width / cosdec
+        ra_min = ra0 - ra_half
+        ra_max = ra0 + ra_half
+
+        if ra_min < 0:
+            ra_clause = f"(s_ra >= {ra_min + 360.0} OR s_ra <= {ra_max})"
+        elif ra_max >= 360:
+            ra_clause = f"(s_ra >= {ra_min} OR s_ra <= {ra_max - 360.0})"
+        else:
+            ra_clause = f"(s_ra BETWEEN {ra_min} AND {ra_max})"
+
+        query = f"""
+        SELECT TOP {int(max_rows)}
+            s_ra,
+            s_dec,
+            target_name,
+            instrument_name,
+            dataproduct_type,
+            obs_publisher_did,
+            freq_min,
+            freq_max,
+            nums_channels,
+            spectral_resolutions
+        FROM ivoa.obscore
+        WHERE {ra_clause}
+          AND s_dec BETWEEN {dec_min} AND {dec_max}
+        """
+    else:
+        query = f"""
+        SELECT TOP {int(max_rows)}
+            s_ra,
+            s_dec,
+            target_name,
+            instrument_name,
+            dataproduct_type,
+            obs_publisher_did,
+            freq_min,
+            freq_max,
+            nums_channels,
+            spectral_resolutions,
+            access_url
+        FROM ivoa.obscore
+        WHERE 1=CONTAINS(
+            POINT('ICRS', s_ra, s_dec),
+            CIRCLE('ICRS', {float(ra_deg)}, {float(dec_deg)}, {radius_deg})
+        )
+        """
 
     last_error = None
     endpoint = NRAO_TAP.rstrip("/") + "/sync"
@@ -230,7 +270,8 @@ def discover_nrao(
     out["status"] = "TIMEOUT"
     out["summary"] = (
         "NRAO archive did not respond within the FORGE timeout window. "
-        "The query was stopped so the app remains responsive."
+        "The query was stopped so the app remains responsive. "
+        + ("Use the dedicated NRAO search for a deeper retry." if fast_mode else "")
     )
     out["details"] = [{
         "error": str(last_error) if last_error else "Unknown NRAO timeout",
