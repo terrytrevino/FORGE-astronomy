@@ -122,7 +122,7 @@ def discover_dasch(ra_deg, dec_deg, max_rows=12):
 
 
 def discover_nrao(ra_deg, dec_deg, radius_arcmin=60.0, max_rows=20, attempts=2):
-    """Query the NRAO VO/TAP archive with fast timeout/retry behavior."""
+    """Query NRAO TAP with explicit network timeouts so the UI cannot spin indefinitely."""
     out = {
         "archive": "NRAO radio",
         "status": "OK",
@@ -158,34 +158,37 @@ def discover_nrao(ra_deg, dec_deg, radius_arcmin=60.0, max_rows=20, attempts=2):
     """
 
     last_error = None
+    endpoint = NRAO_TAP.rstrip("/") + "/sync"
 
     for attempt in range(attempts):
         try:
-            service = pyvo.dal.TAPService(NRAO_TAP)
+            response = requests.post(
+                endpoint,
+                data={
+                    "REQUEST": "doQuery",
+                    "LANG": "ADQL",
+                    "FORMAT": "csv",
+                    "QUERY": query,
+                },
+                timeout=(6, 18),
+            )
+            response.raise_for_status()
 
-            # Prefer async execution to avoid a long blocking /tap/sync call.
-            job = service.submit_job(query)
-            job.run()
-            job.wait(phases=["COMPLETED", "ERROR", "ABORTED"], timeout=25)
+            df = pd.read_csv(io.StringIO(response.text))
+            out["count"] = int(len(df))
 
-            if job.phase != "COMPLETED":
-                raise RuntimeError(f"NRAO TAP job ended with phase {job.phase}")
-
-            table = job.fetch_result().to_table()
-            out["count"] = int(len(table))
-
-            if len(table) == 0:
+            if df.empty:
                 out["summary"] = "No NRAO archive matches"
                 return out
 
             instruments = []
-            if "instrument_name" in table.colnames:
+            if "instrument_name" in df.columns:
                 instruments = sorted(
-                    set(str(x) for x in table["instrument_name"] if str(x).strip())
+                    set(str(x) for x in df["instrument_name"].dropna() if str(x).strip())
                 )
 
             details = []
-            for row in table:
+            for _, row in df.iterrows():
                 item = {}
                 for key in [
                     "target_name",
@@ -203,7 +206,7 @@ def discover_nrao(ra_deg, dec_deg, radius_arcmin=60.0, max_rows=20, attempts=2):
                     "t_max",
                     "access_url",
                 ]:
-                    if key in table.colnames:
+                    if key in df.columns:
                         try:
                             item[key] = str(row[key])
                         except Exception:
@@ -212,7 +215,7 @@ def discover_nrao(ra_deg, dec_deg, radius_arcmin=60.0, max_rows=20, attempts=2):
 
             out["details"] = details
             out["summary"] = (
-                f"{len(table)} radio match(es)"
+                f"{len(df)} radio match(es)"
                 + (f" — {', '.join(instruments[:6])}" if instruments else "")
             )
             return out
@@ -220,12 +223,12 @@ def discover_nrao(ra_deg, dec_deg, radius_arcmin=60.0, max_rows=20, attempts=2):
         except Exception as exc:
             last_error = exc
             if attempt < attempts - 1:
-                time.sleep(1.5)
+                time.sleep(1.0)
 
     out["status"] = "TIMEOUT"
     out["summary"] = (
-        "NRAO archive did not respond in time. "
-        "FORGE stopped the query rather than leaving the app spinning."
+        "NRAO archive did not respond within the FORGE timeout window. "
+        "The query was stopped so the app remains responsive."
     )
     out["details"] = [{
         "error": str(last_error) if last_error else "Unknown NRAO timeout",
