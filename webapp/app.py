@@ -14,7 +14,7 @@ from storage import Storage, StorageConfig
 from archive_discovery import discover_archives, discover_mast, discover_sdss_spectra, discover_irsa, discover_alma, get_mast_preview_products, get_mast_spectrum_products
 from suggested_targets import suggest_compact_stars, suggest_compact_star_catalogs, suggest_morphology_regions
 from spectroscopy import fetch_sdss_spectrum, spectrum_dataframe, spectrum_figure, fetch_apogee_spectrum, apogee_spectrum_figure, apogee_feature_guide, apogee_quality_summary, fetch_mast_spectrum_product, generic_spectrum_figure
-from radio_historical import discover_dss, discover_dasch, discover_nrao, discover_casda, classify_radio_spectral_candidates
+from radio_historical import discover_dss, discover_dasch, discover_nrao, discover_casda, get_dss_preview, classify_radio_spectral_candidates
 from name_resolver import resolve_object_name
 
 st.set_page_config(page_title="FORGE Orion", layout="wide")
@@ -1049,10 +1049,50 @@ with hist_col:
             with st.expander("DASCH plate exposures"):
                 st.json(dasch_result.get("details", []))
 
+            st.markdown("**Historical image preview**")
+            dss_img, dss_err = get_dss_preview(
+                ra,
+                dec,
+                survey="DSS2 Red",
+                radius_arcmin=max(6.0, fov),
+                pixels=512,
+            )
+
+            if dss_img is not None:
+                dss_display = normalize_image(dss_img)
+                then_col, now_col = st.columns(2, gap="medium")
+                then_col.image(
+                    dss_display,
+                    caption="Then — DSS2 Red photographic survey",
+                    use_container_width=True,
+                )
+
+                try:
+                    sdss_bytes_hist = get_sdss_jpeg(ra, dec, fov)
+                    sdss_hist = Image.open(io.BytesIO(sdss_bytes_hist)).convert("L")
+                    now_col.image(
+                        sdss_hist,
+                        caption="Now — SDSS optical",
+                        use_container_width=True,
+                    )
+                except Exception:
+                    now_col.info(
+                        "No SDSS comparison image was returned for this field."
+                    )
+
+                st.caption(
+                    "Historical and modern panels are independently calibrated survey products. "
+                    "Use them for structural/context comparison, not direct brightness comparison."
+                )
+            else:
+                st.info(
+                    f"DSS2 image preview unavailable for this field: {dss_err}"
+                )
+
 with radio_col:
     st.markdown("**Deep radio**")
     st.caption(
-        "NRAO remains available as a deeper best-effort search; ASKAP/CASDA provides a second live radio path."
+        "NRAO remains available as an extended best-effort search; ASKAP/CASDA provides a second live radio path."
     )
 
     if st.button("Search ASKAP / CASDA", use_container_width=True):
@@ -1088,8 +1128,8 @@ with radio_col:
                 with st.expander("Advanced ASKAP metadata"):
                     st.json(cdetails)
 
-    if st.button("Deep NRAO radio search", use_container_width=True):
-        with st.spinner("Running deeper NRAO VLA / VLBA / GBT / ALMA metadata search..."):
+    if st.button("Extended NRAO search", use_container_width=True):
+        with st.spinner("Running extended NRAO VLA / VLBA / GBT / ALMA metadata search..."):
             nrao_result = discover_nrao(
                 ra,
                 dec,
