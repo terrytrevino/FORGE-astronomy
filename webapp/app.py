@@ -12,7 +12,7 @@ from astroquery.skyview import SkyView
 from storage import Storage, StorageConfig
 from archive_discovery import discover_archives, get_mast_preview_products, get_mast_spectrum_products
 from suggested_targets import suggest_compact_stars, suggest_compact_star_catalogs, suggest_morphology_regions
-from spectroscopy import fetch_sdss_spectrum, spectrum_dataframe, spectrum_figure, fetch_apogee_spectrum, apogee_spectrum_figure, apogee_feature_guide, fetch_mast_spectrum_product, generic_spectrum_figure
+from spectroscopy import fetch_sdss_spectrum, spectrum_dataframe, spectrum_figure, fetch_apogee_spectrum, apogee_spectrum_figure, apogee_feature_guide, apogee_quality_summary, fetch_mast_spectrum_product, generic_spectrum_figure
 from radio_historical import discover_dss, discover_dasch, discover_nrao, classify_radio_spectral_candidates
 
 st.set_page_config(page_title="FORGE Orion", layout="wide")
@@ -793,12 +793,21 @@ with spec_tab2:
             if wave is None:
                 st.info(str(meta))
             else:
-                fig = apogee_spectrum_figure(wave, flux, show_lines=show_lines)
+                quality = meta.get("_quality", {}) if isinstance(meta, dict) else {}
+                fig = apogee_spectrum_figure(
+                    wave,
+                    flux,
+                    show_lines=show_lines,
+                    quality=quality,
+                    show_quality=True,
+                )
                 st.pyplot(fig, use_container_width=True)
 
                 st.caption(
-                    "Dashed markers identify a small set of representative APOGEE H-band "
-                    "atomic fingerprints. They are reference wavelengths, not direct abundance measurements."
+                    "Dashed vertical markers identify representative APOGEE H-band atomic fingerprints. "
+                    "X markers flag pipeline-bad pixels; open circles flag caution pixels affected by "
+                    "sky/telluric/persistence-style warnings; triangles mark strong upward outliers that "
+                    "are not pipeline-flagged and therefore deserve inspection rather than automatic interpretation."
                 )
 
                 with st.expander("What do these APOGEE fingerprints mean?", expanded=False):
@@ -811,8 +820,24 @@ with spec_tab2:
                     )
                     st.dataframe(apogee_feature_guide(), use_container_width=True)
 
+                with st.expander("Spectral quality: feature or artifact?", expanded=False):
+                    st.write(
+                        "A visible spike is not automatically an emission line. APOGEE supplies per-pixel "
+                        "quality information that can identify cosmic rays, bad/saturated pixels, persistence, "
+                        "sky-line contamination, and telluric contamination. FORGE overlays those warnings on "
+                        "the plot. An unflagged upward outlier is only a candidate for follow-up: a credible "
+                        "emission feature should align with a known transition, persist across neighboring pixels "
+                        "or repeat observations, and survive uncertainty/quality checks."
+                    )
+                    st.dataframe(apogee_quality_summary(quality), use_container_width=True)
+
                 with st.expander("APOGEE spectrum metadata"):
-                    st.json(meta)
+                    display_meta = (
+                        {k: v for k, v in meta.items() if k != "_quality"}
+                        if isinstance(meta, dict)
+                        else meta
+                    )
+                    st.json(display_meta)
 
                 sdf = spectrum_dataframe(wave, flux)
                 st.download_button(
