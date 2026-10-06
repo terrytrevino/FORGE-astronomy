@@ -10,9 +10,9 @@ import astropy.units as u
 from astroquery.skyview import SkyView
 
 from storage import Storage, StorageConfig
-from archive_discovery import discover_archives, get_mast_preview_products
+from archive_discovery import discover_archives, get_mast_preview_products, get_mast_spectrum_products
 from suggested_targets import suggest_compact_stars, suggest_compact_star_catalogs, suggest_morphology_regions
-from spectroscopy import fetch_sdss_spectrum, spectrum_dataframe, spectrum_figure, fetch_apogee_spectrum, apogee_spectrum_figure
+from spectroscopy import fetch_sdss_spectrum, spectrum_dataframe, spectrum_figure, fetch_apogee_spectrum, apogee_spectrum_figure, fetch_mast_spectrum_product, generic_spectrum_figure
 from radio_historical import discover_dss, discover_dasch, discover_nrao, classify_radio_spectral_candidates
 
 st.set_page_config(page_title="FORGE Orion", layout="wide")
@@ -731,9 +731,10 @@ st.caption(
 
 show_lines = st.checkbox("Show common line markers", value=True)
 
-spec_tab1, spec_tab2, spec_tab3 = st.tabs([
+spec_tab1, spec_tab2, spec_tab3, spec_tab4 = st.tabs([
     "Current SDSS spectrum",
     "Current APOGEE spectrum",
+    "MAST spectra",
     "Known SDSS demo spectrum",
 ])
 
@@ -808,6 +809,65 @@ with spec_tab2:
                 )
 
 with spec_tab3:
+    st.write(
+        "Search MAST near the current coordinate for public FITS spectral products "
+        "and plot the first product FORGE can parse as a 1-D wavelength/flux spectrum."
+    )
+
+    if st.button("Find and plot MAST spectrum", key="plot_mast_spectrum"):
+        with st.spinner("Searching MAST spectral products..."):
+            products = get_mast_spectrum_products(
+                ra, dec, radius_arcsec=discovery_radius, max_products=10
+            )
+
+            if not products:
+                st.info("No candidate MAST FITS spectral products were found near this coordinate.")
+            else:
+                st.caption(f"{len(products)} candidate MAST spectral product(s) found.")
+                plotted = False
+                failures = []
+
+                for product in products:
+                    wave, flux, meta = fetch_mast_spectrum_product(product["dataURI"])
+                    if wave is None:
+                        failures.append({
+                            "filename": product.get("filename", ""),
+                            "error": meta.get("error", "Could not parse"),
+                        })
+                        continue
+
+                    title = product.get("filename", "MAST spectrum")
+                    fig = generic_spectrum_figure(
+                        wave,
+                        flux,
+                        title=title,
+                        show_lines=show_lines,
+                    )
+                    st.pyplot(fig, use_container_width=True)
+
+                    with st.expander("MAST spectrum product metadata"):
+                        st.json({**product, **meta})
+
+                    sdf = spectrum_dataframe(wave, flux)
+                    st.download_button(
+                        "Download MAST spectrum CSV",
+                        sdf.to_csv(index=False).encode("utf-8"),
+                        file_name=f"{name}_mast_spectrum.csv",
+                        mime="text/csv",
+                        key="download_mast_spectrum",
+                    )
+                    plotted = True
+                    break
+
+                if not plotted:
+                    st.warning(
+                        "MAST spectral products were found, but none of the first candidates "
+                        "could be parsed into a 1-D wavelength/flux spectrum."
+                    )
+                    with st.expander("MAST parsing attempts"):
+                        st.json(failures)
+
+with spec_tab4:
     st.write(
         "Use this known SDSS example to confirm that FORGE can retrieve, plot, "
         "label, and export a real spectrum even when the current target has no SDSS spectrum."
@@ -968,5 +1028,5 @@ if st.button("Acquire + Analyze", type="primary"):
 
 st.divider()
 st.caption(
-    "FORGE web app v0.10 — real APOGEE science-target spectra + radio spectral-line triage + multi-archive discovery."
+    "FORGE web app v0.11 — MAST spectra + real APOGEE target spectra + radio spectral-line triage."
 )
