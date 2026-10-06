@@ -14,7 +14,7 @@ from storage import Storage, StorageConfig
 from archive_discovery import discover_archives, discover_mast, discover_sdss_spectra, discover_irsa, discover_alma, get_mast_preview_products, get_mast_spectrum_products
 from suggested_targets import suggest_compact_stars, suggest_compact_star_catalogs, suggest_morphology_regions
 from spectroscopy import fetch_sdss_spectrum, spectrum_dataframe, spectrum_figure, fetch_apogee_spectrum, apogee_spectrum_figure, apogee_feature_guide, apogee_quality_summary, fetch_mast_spectrum_product, generic_spectrum_figure
-from radio_historical import discover_dss, discover_dasch, discover_nrao, classify_radio_spectral_candidates
+from radio_historical import discover_dss, discover_dasch, discover_nrao, discover_casda, classify_radio_spectral_candidates
 from name_resolver import resolve_object_name
 
 st.set_page_config(page_title="FORGE Orion", layout="wide")
@@ -975,10 +975,47 @@ if st.button("Show MAST previews"):
 st.divider()
 
 
-st.subheader("Historical + Deep Radio Discovery")
+st.subheader("Historical + Radio Discovery")
 st.caption(
     "Check photographic plate history and radio-archive coverage around the current field."
 )
+
+radio_overview = st.container()
+with radio_overview:
+    st.markdown("**Radio partners**")
+    rp1, rp2, rp3 = st.columns(3, gap="medium")
+    with rp1:
+        st.markdown("**ALMA**")
+        st.caption("First-class millimeter/submillimeter discovery already integrated in FORGE.")
+    with rp2:
+        st.markdown("**ASKAP / CASDA**")
+        st.caption("Public ASKAP products can now be queried directly from FORGE.")
+    with rp3:
+        st.markdown("**LOFAR / MeerKAT**")
+        st.caption("Partner gateways are linked here; deeper programmatic integration is next.")
+
+    st.markdown(
+        """
+        <div style="display:flex;gap:0.6rem;flex-wrap:wrap;margin:0.35rem 0 0.9rem 0;">
+          <a href="https://vo.astron.nl/browse/__system__/tap" target="_blank"
+             style="text-decoration:none;padding:0.45rem 0.75rem;border:1px solid rgba(180,210,255,0.35);
+                    border-radius:9px;color:#eef5ff;background:rgba(20,32,54,0.78);">
+             ASTRON / LOFAR VO
+          </a>
+          <a href="https://research.csiro.au/casda/" target="_blank"
+             style="text-decoration:none;padding:0.45rem 0.75rem;border:1px solid rgba(180,210,255,0.35);
+                    border-radius:9px;color:#eef5ff;background:rgba(20,32,54,0.78);">
+             CASDA / ASKAP
+          </a>
+          <a href="https://archive.sarao.ac.za/" target="_blank"
+             style="text-decoration:none;padding:0.45rem 0.75rem;border:1px solid rgba(180,210,255,0.35);
+                    border-radius:9px;color:#eef5ff;background:rgba(20,32,54,0.78);">
+             MeerKAT Archive
+          </a>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 hist_col, radio_col = st.columns(2, gap="large")
 
@@ -1015,8 +1052,42 @@ with hist_col:
 with radio_col:
     st.markdown("**Deep radio**")
     st.caption(
-        "NRAO VLA / VLBA / GBT / ALMA metadata. Slow service responses are isolated from the main search."
+        "NRAO remains available as a deeper best-effort search; ASKAP/CASDA provides a second live radio path."
     )
+
+    if st.button("Search ASKAP / CASDA", use_container_width=True):
+        with st.spinner("Querying CSIRO ASKAP Science Data Archive..."):
+            casda_result = discover_casda(
+                ra,
+                dec,
+                radius_arcmin=max(5.0, discovery_radius / 60.0),
+                max_rows=20,
+            )
+            st.dataframe(
+                pd.DataFrame([{
+                    "archive": casda_result["archive"],
+                    "status": casda_result["status"],
+                    "count": casda_result["count"],
+                    "summary": casda_result["summary"],
+                }]),
+                use_container_width=True,
+            )
+            cdetails = casda_result.get("details", [])
+            if cdetails:
+                cdf = pd.DataFrame(cdetails)
+                cols = [
+                    col for col in [
+                        "target_name",
+                        "dataproduct_type",
+                        "dataproduct_subtype",
+                        "obs_collection",
+                        "filename",
+                    ] if col in cdf.columns
+                ]
+                st.dataframe(cdf[cols].head(15) if cols else cdf.head(15), use_container_width=True)
+                with st.expander("Advanced ASKAP metadata"):
+                    st.json(cdetails)
+
     if st.button("Deep NRAO radio search", use_container_width=True):
         with st.spinner("Running deeper NRAO VLA / VLBA / GBT / ALMA metadata search..."):
             nrao_result = discover_nrao(
@@ -1061,6 +1132,19 @@ with radio_col:
                     )
                 else:
                     st.info("No strongly line-capable radio datasets were identified from the returned metadata.")
+
+st.divider()
+with st.expander("Discovery Lens — why this field may be worth exploring", expanded=False):
+    st.write(
+        "FORGE is built to keep the visual and physical context connected. "
+        "A rich field may be interesting because multiple archives overlap, because morphology changes "
+        "with wavelength, because a real spectrum is available, or because historical and radio coverage "
+        "exist at the same coordinates."
+    )
+    st.caption(
+        "Use archive previews and source links as evidence-bearing context rather than decoration. "
+        "When a MAST/JWST/HST preview is available, the image remains tied to its archive product and provenance."
+    )
 
 st.divider()
 st.subheader("Spectroscopy")
@@ -1407,6 +1491,18 @@ if st.button("Acquire + Analyze", type="primary"):
 
 
 st.divider()
-st.caption(
-    "FORGE web app v0.11 — MAST spectra + real APOGEE target spectra + radio spectral-line triage."
+st.markdown(
+    """
+    <div style="padding:1rem 0 0.25rem 0;color:#b8c7da;font-size:0.83rem;line-height:1.55;">
+      <strong style="color:#eef5ff;">FORGE Astronomy — Web v0.11 public alpha</strong><br>
+      Field Observation, Retrieval, Generation, and Evaluation<br>
+      Release checkpoint: October 2026<br>
+      Co-developed by D. Terry Trevino and Vivian Hom ·
+      <a href="https://github.com/terrytrevino/FORGE-astronomy" target="_blank" style="color:#cfe0ff;">source repository</a><br>
+      Hero image: M42, Hubble Space Telescope Orion Treasury mosaic ·
+      NASA / ESA / M. Robberto (STScI/ESA) / HST Orion Treasury Project Team<br>
+      Archive imagery, spectra, and metadata remain attributed to their originating observatories and archives.
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
