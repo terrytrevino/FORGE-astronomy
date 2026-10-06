@@ -12,7 +12,7 @@ from astroquery.skyview import SkyView
 from storage import Storage, StorageConfig
 from archive_discovery import discover_archives, get_mast_preview_products, get_mast_spectrum_products
 from suggested_targets import suggest_compact_stars, suggest_compact_star_catalogs, suggest_morphology_regions
-from spectroscopy import fetch_sdss_spectrum, spectrum_dataframe, spectrum_figure, fetch_apogee_spectrum, apogee_spectrum_figure, fetch_mast_spectrum_product, generic_spectrum_figure
+from spectroscopy import fetch_sdss_spectrum, spectrum_dataframe, spectrum_figure, fetch_apogee_spectrum, apogee_spectrum_figure, apogee_feature_guide, fetch_mast_spectrum_product, generic_spectrum_figure
 from radio_historical import discover_dss, discover_dasch, discover_nrao, classify_radio_spectral_candidates
 
 st.set_page_config(page_title="FORGE Orion", layout="wide")
@@ -793,8 +793,23 @@ with spec_tab2:
             if wave is None:
                 st.info(str(meta))
             else:
-                fig = apogee_spectrum_figure(wave, flux)
+                fig = apogee_spectrum_figure(wave, flux, show_lines=show_lines)
                 st.pyplot(fig, use_container_width=True)
+
+                st.caption(
+                    "Dashed markers identify a small set of representative APOGEE H-band "
+                    "atomic fingerprints. They are reference wavelengths, not direct abundance measurements."
+                )
+
+                with st.expander("What do these APOGEE fingerprints mean?", expanded=False):
+                    st.write(
+                        "APOGEE stellar spectra are usually dominated by absorption features. "
+                        "Different atoms and molecules absorb at characteristic wavelengths, creating "
+                        "a chemical fingerprint. Abundances such as [Fe/H] or [Mg/Fe] are derived by "
+                        "fitting many features with stellar-atmosphere models; a deeper line by itself "
+                        "does not mean a proportionally higher abundance."
+                    )
+                    st.dataframe(apogee_feature_guide(), use_container_width=True)
 
                 with st.expander("APOGEE spectrum metadata"):
                     st.json(meta)
