@@ -985,53 +985,19 @@ st.divider()
 
 st.subheader("Historical + Radio Discovery")
 st.caption(
-    "Check photographic plate history and radio-archive coverage around the current field."
+    "Explore how this field appears across time and radio wavelength regimes."
 )
 
-radio_overview = st.container()
-with radio_overview:
-    st.markdown("**Radio partners**")
-    rp1, rp2, rp3 = st.columns(3, gap="medium")
-    with rp1:
-        st.markdown("**ALMA**")
-        st.caption("First-class millimeter/submillimeter discovery already integrated in FORGE.")
-    with rp2:
-        st.markdown("**ASKAP / CASDA**")
-        st.caption("Public ASKAP products can now be queried directly from FORGE.")
-    with rp3:
-        st.markdown("**LOFAR / MeerKAT**")
-        st.caption("Partner gateways are linked here; deeper programmatic integration is next.")
+hist_tab, radio_tab = st.tabs(["Historical sky", "Radio archives"])
 
-    st.markdown(
-        """
-        <div style="display:flex;gap:0.6rem;flex-wrap:wrap;margin:0.35rem 0 0.9rem 0;">
-          <a href="https://vo.astron.nl/browse/__system__/tap" target="_blank"
-             style="text-decoration:none;padding:0.45rem 0.75rem;border:1px solid rgba(180,210,255,0.35);
-                    border-radius:9px;color:#eef5ff;background:rgba(20,32,54,0.78);">
-             ASTRON / LOFAR VO
-          </a>
-          <a href="https://research.csiro.au/casda/" target="_blank"
-             style="text-decoration:none;padding:0.45rem 0.75rem;border:1px solid rgba(180,210,255,0.35);
-                    border-radius:9px;color:#eef5ff;background:rgba(20,32,54,0.78);">
-             CASDA / ASKAP
-          </a>
-          <a href="https://archive.sarao.ac.za/" target="_blank"
-             style="text-decoration:none;padding:0.45rem 0.75rem;border:1px solid rgba(180,210,255,0.35);
-                    border-radius:9px;color:#eef5ff;background:rgba(20,32,54,0.78);">
-             MeerKAT Archive
-          </a>
-        </div>
-        """,
-        unsafe_allow_html=True,
+with hist_tab:
+    st.write(
+        "Check photographic-survey coverage and compare historical optical imagery "
+        "with a modern optical view when available."
     )
 
-hist_col, radio_col = st.columns(2, gap="large")
-
-with hist_col:
-    st.markdown("**Historical sky**")
-    st.caption("DSS / DSS2 imagery and Harvard DASCH plate coverage.")
-    if st.button("Discover historical plates", use_container_width=True):
-        with st.spinner("Checking DSS and Harvard DASCH..."):
+    if st.button("Discover historical sky", use_container_width=True, key="discover_historical_sky"):
+        with st.spinner("Checking DSS / DSS2 and Harvard DASCH..."):
             dss_result = discover_dss(ra, dec, radius_arcmin=max(6.0, fov))
             dasch_result = discover_dasch(ra, dec)
 
@@ -1051,13 +1017,15 @@ with hist_col:
             ])
             st.dataframe(hist_df, use_container_width=True)
 
-            with st.expander("DSS layers"):
-                st.json(dss_result.get("details", []))
+            h1, h2 = st.columns(2, gap="medium")
+            with h1:
+                with st.expander("DSS / DSS2 coverage"):
+                    st.json(dss_result.get("details", []))
+            with h2:
+                with st.expander("DASCH plate exposures"):
+                    st.json(dasch_result.get("details", []))
 
-            with st.expander("DASCH plate exposures"):
-                st.json(dasch_result.get("details", []))
-
-            st.markdown("**Historical image preview**")
+            st.markdown("**Then vs. Now**")
             dss_img, dss_err = get_dss_preview(
                 ra,
                 dec,
@@ -1090,96 +1058,134 @@ with hist_col:
 
                 st.caption(
                     "Historical and modern panels are independently calibrated survey products. "
-                    "Use them for structural/context comparison, not direct brightness comparison."
+                    "Compare structure and context rather than raw brightness."
                 )
             else:
                 st.info(
                     f"DSS2 image preview unavailable for this field: {dss_err}"
                 )
 
-with radio_col:
-    st.markdown("**Deep radio**")
-    st.caption(
-        "NRAO remains available as an extended best-effort search; ASKAP/CASDA provides a second live radio path."
+with radio_tab:
+    st.write(
+        "Search radio and millimeter archives for continuum, spectral-line, and "
+        "interferometric observations associated with the current field."
     )
 
-    if st.button("Search ASKAP / CASDA", use_container_width=True):
-        with st.spinner("Querying CSIRO ASKAP Science Data Archive..."):
-            casda_result = discover_casda(
-                ra,
-                dec,
-                radius_arcmin=max(5.0, discovery_radius / 60.0),
-                max_rows=20,
-            )
-            st.dataframe(
-                pd.DataFrame([{
-                    "archive": casda_result["archive"],
-                    "status": casda_result["status"],
-                    "count": casda_result["count"],
-                    "summary": casda_result["summary"],
-                }]),
-                use_container_width=True,
-            )
-            cdetails = casda_result.get("details", [])
-            if cdetails:
-                cdf = pd.DataFrame(cdetails)
-                cols = [
-                    col for col in [
-                        "target_name",
-                        "dataproduct_type",
-                        "dataproduct_subtype",
-                        "obs_collection",
-                        "filename",
-                    ] if col in cdf.columns
-                ]
-                st.dataframe(cdf[cols].head(15) if cols else cdf.head(15), use_container_width=True)
-                with st.expander("Advanced ASKAP metadata"):
-                    st.json(cdetails)
+    rp1, rp2, rp3 = st.columns(3, gap="medium")
+    with rp1:
+        st.markdown("**ALMA**")
+        st.caption("Integrated in the main archive search for millimeter/submillimeter observations.")
+    with rp2:
+        st.markdown("**ASKAP / CASDA**")
+        st.caption("Live public-radio search available directly in FORGE.")
+    with rp3:
+        st.markdown("**LOFAR / MeerKAT / NRAO**")
+        st.caption("Partner archive pathways plus an extended NRAO specialist search.")
 
-    if st.button("Extended NRAO search", use_container_width=True):
-        with st.spinner("Running extended NRAO VLA / VLBA / GBT / ALMA metadata search..."):
-            nrao_result = discover_nrao(
-                ra,
-                dec,
-                radius_arcmin=max(1.0, discovery_radius / 60.0),
-                max_rows=20,
-                attempts=2,
-                read_timeout=45,
-            )
+    st.markdown(
+        """
+        <div style="display:flex;gap:0.6rem;flex-wrap:wrap;margin:0.35rem 0 0.9rem 0;">
+          <a href="https://vo.astron.nl/browse/__system__/tap" target="_blank"
+             style="text-decoration:none;padding:0.45rem 0.75rem;border:1px solid rgba(180,210,255,0.35);
+                    border-radius:9px;color:#eef5ff;background:rgba(20,32,54,0.78);">
+             ASTRON / LOFAR VO
+          </a>
+          <a href="https://research.csiro.au/casda/" target="_blank"
+             style="text-decoration:none;padding:0.45rem 0.75rem;border:1px solid rgba(180,210,255,0.35);
+                    border-radius:9px;color:#eef5ff;background:rgba(20,32,54,0.78);">
+             CASDA / ASKAP
+          </a>
+          <a href="https://archive.sarao.ac.za/" target="_blank"
+             style="text-decoration:none;padding:0.45rem 0.75rem;border:1px solid rgba(180,210,255,0.35);
+                    border-radius:9px;color:#eef5ff;background:rgba(20,32,54,0.78);">
+             MeerKAT Archive
+          </a>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-            st.dataframe(
-                pd.DataFrame([
-                    {
+    radio_a, radio_b = st.columns(2, gap="large")
+
+    with radio_a:
+        st.markdown("**ASKAP / CASDA**")
+        st.caption("Fast public ASKAP product discovery.")
+        if st.button("Search ASKAP / CASDA", use_container_width=True, key="search_casda_radio"):
+            with st.spinner("Querying CSIRO ASKAP Science Data Archive..."):
+                casda_result = discover_casda(
+                    ra,
+                    dec,
+                    radius_arcmin=max(5.0, discovery_radius / 60.0),
+                    max_rows=20,
+                )
+                st.dataframe(
+                    pd.DataFrame([{
+                        "archive": casda_result["archive"],
+                        "status": casda_result["status"],
+                        "count": casda_result["count"],
+                        "summary": casda_result["summary"],
+                    }]),
+                    use_container_width=True,
+                )
+                cdetails = casda_result.get("details", [])
+                if cdetails:
+                    cdf = pd.DataFrame(cdetails)
+                    cols = [
+                        col for col in [
+                            "target_name",
+                            "dataproduct_type",
+                            "dataproduct_subtype",
+                            "obs_collection",
+                            "filename",
+                        ] if col in cdf.columns
+                    ]
+                    st.dataframe(
+                        cdf[cols].head(15) if cols else cdf.head(15),
+                        use_container_width=True,
+                    )
+                    with st.expander("Advanced ASKAP metadata"):
+                        st.json(cdetails)
+
+    with radio_b:
+        st.markdown("**Extended NRAO**")
+        st.caption(
+            "Best-effort VLA / VLBA / GBT metadata search. This external service can time out."
+        )
+        if st.button("Run extended NRAO search", use_container_width=True, key="search_extended_nrao"):
+            with st.spinner("Querying NRAO VLA / VLBA / GBT metadata..."):
+                nrao_result = discover_nrao(
+                    ra,
+                    dec,
+                    radius_arcmin=max(1.0, discovery_radius / 60.0),
+                    max_rows=20,
+                    attempts=2,
+                    read_timeout=45,
+                )
+
+                st.dataframe(
+                    pd.DataFrame([{
                         "archive": nrao_result["archive"],
                         "status": nrao_result["status"],
                         "count": nrao_result["count"],
                         "summary": nrao_result["summary"],
-                    }
-                ]),
-                use_container_width=True,
-            )
-
-            details = nrao_result.get("details", [])
-
-            with st.expander("Radio observation details"):
-                st.json(details)
-
-            triage_df = classify_radio_spectral_candidates(details)
-            if not triage_df.empty:
-                st.markdown("**Radio spectral-line triage**")
-                st.caption(
-                    "Metadata-based ranking only: LIKELY SPECTRAL means the observation "
-                    "looks suitable for line analysis; it does not confirm a detected line."
+                    }]),
+                    use_container_width=True,
                 )
-                st.dataframe(triage_df, use_container_width=True)
 
-                likely = triage_df[triage_df["classification"] == "LIKELY SPECTRAL"]
-                if not likely.empty:
-                    st.success(
-                        f"{len(likely)} likely spectral-line-capable radio dataset(s) found."
-                    )
-                else:
-                    st.info("No strongly line-capable radio datasets were identified from the returned metadata.")
+                details = nrao_result.get("details", [])
+                if details:
+                    with st.expander("Radio observation details"):
+                        st.json(details)
+
+                    triage_df = classify_radio_spectral_candidates(details)
+                    if not triage_df.empty:
+                        st.markdown("**Spectral-line capability triage**")
+                        st.caption(
+                            "Metadata-based ranking only. A likely-spectral label means the dataset "
+                            "looks suitable for line analysis; it does not confirm a detected line."
+                        )
+                        st.dataframe(triage_df, use_container_width=True)
+
 
 st.divider()
 with st.expander("Discovery Lens — why this field may be worth exploring", expanded=False):
