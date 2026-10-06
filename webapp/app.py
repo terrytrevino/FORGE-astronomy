@@ -13,7 +13,7 @@ from storage import Storage, StorageConfig
 from archive_discovery import discover_archives, get_mast_preview_products
 from suggested_targets import suggest_compact_stars, suggest_compact_star_catalogs, suggest_morphology_regions
 from spectroscopy import fetch_sdss_spectrum, spectrum_dataframe, spectrum_figure
-from radio_historical import discover_dss, discover_dasch, discover_nrao
+from radio_historical import discover_dss, discover_dasch, discover_nrao, classify_radio_spectral_candidates
 
 st.set_page_config(page_title="FORGE Orion", layout="wide")
 
@@ -700,8 +700,27 @@ with radio_col:
                 use_container_width=True,
             )
 
+            details = nrao_result.get("details", [])
+
             with st.expander("Radio observation details"):
-                st.json(nrao_result.get("details", []))
+                st.json(details)
+
+            triage_df = classify_radio_spectral_candidates(details)
+            if not triage_df.empty:
+                st.markdown("**Radio spectral-line triage**")
+                st.caption(
+                    "Metadata-based ranking only: LIKELY SPECTRAL means the observation "
+                    "looks suitable for line analysis; it does not confirm a detected line."
+                )
+                st.dataframe(triage_df, use_container_width=True)
+
+                likely = triage_df[triage_df["classification"] == "LIKELY SPECTRAL"]
+                if not likely.empty:
+                    st.success(
+                        f"{len(likely)} likely spectral-line-capable radio dataset(s) found."
+                    )
+                else:
+                    st.info("No strongly line-capable radio datasets were identified from the returned metadata.")
 
 st.divider()
 st.subheader("Spectroscopy")
@@ -912,5 +931,5 @@ if st.button("Acquire + Analyze", type="primary"):
 
 st.divider()
 st.caption(
-    "FORGE web app v0.8 — historical plates + NRAO radio + parallel 2MASS/Gaia + spectroscopy."
+    "FORGE web app v0.9 — radio spectral-line triage + historical plates + multi-archive discovery."
 )
