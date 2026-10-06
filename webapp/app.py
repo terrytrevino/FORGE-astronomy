@@ -11,7 +11,7 @@ from astroquery.skyview import SkyView
 
 from storage import Storage, StorageConfig
 from archive_discovery import discover_archives, get_mast_preview_products
-from suggested_targets import suggest_compact_stars, suggest_morphology_regions
+from suggested_targets import suggest_compact_stars, suggest_compact_star_catalogs, suggest_morphology_regions
 from spectroscopy import fetch_sdss_spectrum, spectrum_dataframe, spectrum_figure
 
 st.set_page_config(page_title="FORGE Orion", layout="wide")
@@ -75,6 +75,84 @@ st.markdown(
         unsafe_allow_html=True,
     )
 
+
+
+# FORGE_HIGH_CONTRAST_UI
+st.markdown(
+    """
+    <style>
+    /* Inactive and active tabs */
+    button[data-baseweb="tab"] {
+        color: #DDE7F5 !important;
+        font-weight: 600 !important;
+    }
+    button[data-baseweb="tab"][aria-selected="false"] {
+        color: #C7D4E8 !important;
+        opacity: 1 !important;
+    }
+    button[data-baseweb="tab"][aria-selected="true"] {
+        color: #FFFFFF !important;
+    }
+
+    /* Stronger section dividers */
+    hr {
+        border: none !important;
+        border-top: 1px solid rgba(180, 205, 240, 0.42) !important;
+        margin-top: 1rem !important;
+        margin-bottom: 1rem !important;
+    }
+
+    /* Input/select visual boundaries */
+    div[data-baseweb="input"] > div,
+    div[data-baseweb="select"] > div,
+    div[data-testid="stNumberInput"] input,
+    div[data-testid="stTextInput"] input {
+        border: 1px solid rgba(185, 210, 245, 0.48) !important;
+        background-color: #0F1D30 !important;
+    }
+
+    /* File uploader */
+    section[data-testid="stFileUploaderDropzone"] {
+        border: 1.5px solid rgba(185, 210, 245, 0.55) !important;
+        background-color: rgba(15, 29, 48, 0.88) !important;
+    }
+    section[data-testid="stFileUploaderDropzone"] small,
+    section[data-testid="stFileUploaderDropzone"] span {
+        color: #D4DEEC !important;
+        opacity: 1 !important;
+    }
+
+    /* All standard buttons get a visible boundary */
+    .stButton > button,
+    .stDownloadButton > button {
+        border: 1.5px solid rgba(190, 215, 250, 0.62) !important;
+        background-color: #142742 !important;
+        color: #F4F8FD !important;
+        font-weight: 600 !important;
+    }
+    .stButton > button:hover,
+    .stDownloadButton > button:hover {
+        border-color: #9FC2FF !important;
+        background-color: #1B355A !important;
+    }
+
+    /* Expanders and dataframe boundaries */
+    details[data-testid="stExpander"],
+    div[data-testid="stDataFrame"] {
+        border: 1px solid rgba(175, 200, 235, 0.34) !important;
+        border-radius: 10px !important;
+    }
+
+    /* Secondary/help text */
+    [data-testid="stCaptionContainer"],
+    [data-testid="stMarkdownContainer"] small {
+        color: #C7D3E5 !important;
+        opacity: 1 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 SDSS_URL = "https://skyserver.sdss.org/dr17/SkyServerWS/ImgCutout/getjpeg"
 SURVEYS = {"J": "2MASS-J", "H": "2MASS-H", "K": "2MASS-K"}
@@ -320,25 +398,42 @@ suggest_tab1, suggest_tab2 = st.tabs(["Nearby compact stars", "Morphology region
 
 with suggest_tab1:
     if st.button("Suggest compact stars"):
-        with st.spinner("Searching nearby 2MASS point sources..."):
-            star_df, star_err = suggest_compact_stars(
+        with st.spinner("Searching 2MASS and Gaia DR3 near the current field..."):
+            two_df, gaia_df, two_note, gaia_note = suggest_compact_star_catalogs(
                 ra, dec, radius_arcmin=max(3.0, fov), limit=8
             )
-            if star_err and star_df.empty:
-                st.error(f"Compact-star search failed: {star_err}")
-            else:
-                if star_err:
-                    st.warning(star_err)
-                if star_df.empty:
-                    st.info("No nearby compact stars found.")
+
+            col_a, col_b = st.columns(2)
+
+            with col_a:
+                st.markdown("**2MASS PSC candidates**")
+                if two_note:
+                    st.warning(two_note)
+                if two_df.empty:
+                    st.info("No 2MASS compact-star candidates found.")
                 else:
-                    st.dataframe(star_df, use_container_width=True)
-                st.download_button(
-                    "Download compact-star candidates",
-                    star_df.to_csv(index=False).encode("utf-8"),
-                    file_name="forge_compact_star_candidates.csv",
-                    mime="text/csv",
-                )
+                    st.dataframe(two_df, use_container_width=True)
+                    st.download_button(
+                        "Download 2MASS candidates",
+                        two_df.to_csv(index=False).encode("utf-8"),
+                        file_name="forge_2mass_compact_star_candidates.csv",
+                        mime="text/csv",
+                    )
+
+            with col_b:
+                st.markdown("**Gaia DR3 candidates**")
+                if gaia_note:
+                    st.warning(gaia_note)
+                if gaia_df.empty:
+                    st.info("No Gaia compact-star candidates found.")
+                else:
+                    st.dataframe(gaia_df, use_container_width=True)
+                    st.download_button(
+                        "Download Gaia candidates",
+                        gaia_df.to_csv(index=False).encode("utf-8"),
+                        file_name="forge_gaia_compact_star_candidates.csv",
+                        mime="text/csv",
+                    )
 
 with suggest_tab2:
     if st.button("Suggest morphology regions"):
@@ -648,5 +743,5 @@ if st.button("Acquire + Analyze", type="primary"):
 
 st.divider()
 st.caption(
-    "FORGE web app v0.6 — student-ready spectroscopy + persistent targets + archive discovery."
+    "FORGE web app v0.7 — parallel 2MASS/Gaia discovery + high-contrast dark UI + spectroscopy."
 )
