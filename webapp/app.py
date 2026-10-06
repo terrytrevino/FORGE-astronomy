@@ -21,14 +21,36 @@ st.markdown(
         """
         <style>
         html, body, [data-testid="stAppViewContainer"], .stApp {
-            background:
-                radial-gradient(circle at 18% 22%, rgba(90,110,255,0.24) 0%, rgba(90,110,255,0.00) 20%),
-                radial-gradient(circle at 78% 30%, rgba(120,70,220,0.22) 0%, rgba(120,70,220,0.00) 22%),
-                radial-gradient(circle at 62% 70%, rgba(70,140,255,0.18) 0%, rgba(70,140,255,0.00) 24%),
-                radial-gradient(circle at 35% 78%, rgba(180,90,120,0.16) 0%, rgba(180,90,120,0.00) 20%),
-                linear-gradient(180deg, #06101b 0%, #081423 35%, #091827 100%) !important;
-            background-attachment: fixed !important;
+            background-color: #050b14 !important;
             color: #e8eef7 !important;
+        }
+
+        [data-testid="stAppViewContainer"] {
+            position: relative !important;
+            background:
+                radial-gradient(circle at 12% 18%, rgba(255,255,255,0.95) 0 1px, transparent 1.8px),
+                radial-gradient(circle at 33% 12%, rgba(210,225,255,0.90) 0 1px, transparent 1.7px),
+                radial-gradient(circle at 58% 21%, rgba(255,255,255,0.86) 0 1.2px, transparent 1.9px),
+                radial-gradient(circle at 84% 16%, rgba(220,235,255,0.88) 0 1px, transparent 1.7px),
+                radial-gradient(circle at 17% 55%, rgba(255,255,255,0.82) 0 1px, transparent 1.7px),
+                radial-gradient(circle at 73% 62%, rgba(210,230,255,0.84) 0 1.1px, transparent 1.8px),
+                radial-gradient(circle at 91% 76%, rgba(255,255,255,0.80) 0 1px, transparent 1.7px),
+                radial-gradient(circle at 41% 86%, rgba(230,240,255,0.82) 0 1px, transparent 1.7px),
+                radial-gradient(ellipse at 20% 32%, rgba(66,105,210,0.35) 0%, rgba(66,105,210,0.10) 22%, transparent 45%),
+                radial-gradient(ellipse at 78% 28%, rgba(130,72,190,0.30) 0%, rgba(130,72,190,0.08) 24%, transparent 46%),
+                radial-gradient(ellipse at 58% 76%, rgba(40,130,180,0.25) 0%, rgba(40,130,180,0.06) 25%, transparent 48%),
+                linear-gradient(180deg, #040912 0%, #071426 45%, #08111d 100%) !important;
+            background-attachment: fixed !important;
+            background-size:
+                180px 180px,
+                230px 230px,
+                290px 290px,
+                340px 340px,
+                260px 260px,
+                310px 310px,
+                370px 370px,
+                410px 410px,
+                cover, cover, cover, cover !important;
         }
 
         [data-testid="stAppViewContainer"] > .main {
@@ -36,11 +58,12 @@ st.markdown(
         }
 
         .block-container {
-            background: rgba(8, 15, 28, 0.72);
-            border: 1px solid rgba(180, 210, 255, 0.10);
+            background: rgba(7, 14, 26, 0.54) !important;
+            border: 1px solid rgba(180, 210, 255, 0.22) !important;
             border-radius: 18px;
             padding: 1.5rem 1.5rem 2rem 1.5rem;
-            backdrop-filter: blur(6px);
+            backdrop-filter: blur(3px);
+            box-shadow: 0 10px 35px rgba(0,0,0,0.18);
         }
 
         section[data-testid="stSidebar"] {
