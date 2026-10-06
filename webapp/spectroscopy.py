@@ -275,3 +275,141 @@ def apogee_spectrum_figure(wavelength, flux):
     ax.grid(alpha=0.2)
     fig.tight_layout()
     return fig
+
+
+def _extract_wave_flux_from_hdul(hdul):
+    """Best-effort extraction of 1-D wavelength/flux arrays from common MAST FITS spectra."""
+    wave_names = ["wavelength", "wave", "lambda", "lam", "loglam"]
+    flux_names = ["flux", "flam", "flux_ergs", "net", "science", "spec"]
+
+    for hdu in hdul:
+        data = getattr(hdu, "data", None)
+        if data is None:
+            continue
+
+        # Binary-table spectra.
+        names = getattr(data, "names", None)
+        if names:
+            lower_map = {str(n).lower(): n for n in names}
+            wcol = next((lower_map[n] for n in wave_names if n in lower_map), None)
+            fcol = next((lower_map[n] for n in flux_names if n in lower_map), None)
+
+            if wcol is not None and fcol is not None:
+                wave = np.asarray(data[wcol], dtype=float)
+                flux = np.asarray(data[fcol], dtype=float)
+
+                # One-row vector columns are common in extracted MAST spectra.
+                wave = np.squeeze(wave)
+                flux = np.squeeze(flux)
+
+                if wave.ndim > 1:
+                    wave = np.asarray(wave[0], dtype=float)
+                if flux.ndim > 1:
+                    flux = np.asarray(flux[0], dtype=float)
+
+                if str(wcol).lower() == "loglam":
+                    wave = 10 ** wave
+
+                if wave.ndim == 1 and flux.ndim == 1:
+                    n = min(len(wave), len(flux))
+                    wave = wave[:n]
+                    flux = flux[:n]
+                    finite = np.isfinite(wave) & np.isfinite(flux)
+                    if finite.sum() > 10:
+                        return wave[finite], flux[finite]
+
+        # Image-array spectra with linear/log WCS.
+        try:
+            arr = np.asarray(data, dtype=float)
+            arr = np.squeeze(arr)
+            if arr.ndim == 1 and arr.size > 10:
+                hdr = hdu.header
+                crval = hdr.get("CRVAL1")
+                cdelt = hdr.get("CDELT1")
+                crpix = hdr.get("CRPIX1", 1.0)
+                ctype = str(hdr.get("CTYPE1", "")).upper()
+
+                if crval is not None and cdelt is not None:
+                    pix = np.arange(arr.size, dtype=float) + 1.0
+                    axis = float(crval) + (pix - float(crpix)) * float(cdelt)
+                    if "LOG" in ctype:
+                        axis = 10 ** axis
+
+                    finite = np.isfinite(axis) & np.isfinite(arr)
+                    if finite.sum() > 10:
+                        return axis[finite], arr[finite]
+        except Exception:
+            pass
+
+    return None, None
+
+
+def fetch_mast_spectrum_product(data_uri):
+    """Download one MAST FITS product and return wavelength, flux, status/meta."""
+    import gzip
+    import io
+    import requests
+    from astropy.io import fits
+
+    url = (
+        "https://mast.stsci.edu/api/v0.1/Download/file?uri="
+        + requests.utils.quote(str(data_uri), safe=":")
+    )
+
+    try:
+        r = requests.get(url, timeout=(8, 35))
+        r.raise_for_status()
+        raw = r.content
+
+        if raw[:2] == b"\x1f\x8b":
+            raw = gzip.decompress(raw)
+
+        with fits.open(io.BytesIO(raw), memmap=False) as hdul:
+            wave, flux = _extract_wave_flux_from_hdul(hdul)
+
+        if wave is None:
+            return None, None, {
+                "error": "No recognized 1-D wavelength/flux pair found in this FITS product",
+                "url": url,
+            }
+
+        return wave, flux, {
+            "archive": "MAST",
+            "url": url,
+            "data_uri": str(data_uri),
+        }
+
+    except Exception as exc:
+        return None, None, {
+            "error": f"MAST spectrum retrieval/parsing failed: {exc}",
+            "url": url,
+            "data_uri": str(data_uri),
+        }
+
+
+def generic_spectrum_figure(wavelength, flux, title="MAST spectrum", show_lines=False):
+    fig, ax = plt.subplots(figsize=(11, 4.5))
+    ax.plot(wavelength, flux, linewidth=0.8)
+    ax.set_xlabel("Wavelength")
+    ax.set_ylabel("Flux")
+    ax.set_title(title)
+    ax.grid(alpha=0.2)
+
+    if show_lines and len(wavelength):
+        ymin, ymax = ax.get_ylim()
+        for label, wave in COMMON_LINES:
+            if wavelength.min() <= wave <= wavelength.max():
+                ax.axvline(wave, linewidth=0.6, linestyle="--", alpha=0.55)
+                ax.text(
+                    wave,
+                    ymax,
+                    label,
+                    rotation=90,
+                    va="top",
+                    ha="right",
+                    fontsize=7,
+                    alpha=0.8,
+                )
+
+    fig.tight_layout()
+    return fig
