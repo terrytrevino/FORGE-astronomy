@@ -448,3 +448,29 @@ def discover_casda(ra_deg, dec_deg, radius_arcmin=10.0, max_rows=20):
         out["status"] = "ERROR"
         out["summary"] = str(exc)
         return out
+
+
+def get_dss_preview(ra_deg, dec_deg, survey="DSS2 Red", radius_arcmin=6.0, pixels=512):
+    """Return one DSS/SkyView image array for direct historical-image preview."""
+    try:
+        imgs = SkyView.get_images(
+            position=f"{float(ra_deg)} {float(dec_deg)}",
+            survey=[survey],
+            radius=(float(radius_arcmin) / 2.0) * u.arcmin,
+            pixels=f"{int(pixels)},{int(pixels)}",
+        )
+        if not imgs:
+            return None, f"No {survey} image returned"
+
+        for hdu in imgs[0]:
+            data = getattr(hdu, "data", None)
+            if data is not None:
+                import numpy as np
+                arr = np.squeeze(data)
+                if arr.ndim == 2:
+                    return np.asarray(arr, dtype=float), None
+
+        return None, f"{survey} response contained no 2-D image"
+
+    except Exception as exc:
+        return None, str(exc)
