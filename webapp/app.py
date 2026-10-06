@@ -1,4 +1,5 @@
 import io
+from concurrent.futures import ThreadPoolExecutor, wait
 import json
 import numpy as np
 import pandas as pd
@@ -10,7 +11,7 @@ import astropy.units as u
 from astroquery.skyview import SkyView
 
 from storage import Storage, StorageConfig
-from archive_discovery import discover_archives, get_mast_preview_products, get_mast_spectrum_products
+from archive_discovery import discover_archives, discover_mast, discover_sdss_spectra, discover_irsa, discover_alma, get_mast_preview_products, get_mast_spectrum_products
 from suggested_targets import suggest_compact_stars, suggest_compact_star_catalogs, suggest_morphology_regions
 from spectroscopy import fetch_sdss_spectrum, spectrum_dataframe, spectrum_figure, fetch_apogee_spectrum, apogee_spectrum_figure, apogee_feature_guide, apogee_quality_summary, fetch_mast_spectrum_product, generic_spectrum_figure
 from radio_historical import discover_dss, discover_dasch, discover_nrao, classify_radio_spectral_candidates
@@ -669,121 +670,160 @@ st.subheader("Archive Discovery")
 st.caption("Check what exists at this coordinate before downloading large datasets.")
 
 if st.button("Search All Archives", type="primary"):
-    with st.spinner(
-        "Searching MAST, SDSS, IRSA, ALMA, DSS, Harvard DASCH, and NRAO radio archives..."
-    ):
-        all_results = []
+    st.info(
+        "FORGE is querying the integrated archives in parallel. "
+        "Slow services will not block the entire search; partial results are kept."
+    )
 
+    from astropy.coordinates import SkyCoord
+
+    coord = SkyCoord(
+        ra=float(ra) * u.deg,
+        dec=float(dec) * u.deg,
+        frame="icrs",
+    )
+    radius = float(discovery_radius) * u.arcsec
+    sdss_radius = min(float(discovery_radius), 180.0) * u.arcsec
+
+    jobs = {
+        "MAST": lambda: discover_mast(coord, radius),
+        "SDSS spectroscopy": lambda: discover_sdss_spectra(coord, sdss_radius),
+        "IRSA": lambda: discover_irsa(coord, radius),
+        "ALMA": lambda: discover_alma(coord, radius),
+        "DSS / photographic plates": lambda: discover_dss(
+            ra, dec, radius_arcmin=max(6.0, fov)
+        ),
+        "Harvard DASCH": lambda: discover_dasch(ra, dec),
+        "NRAO radio": lambda: discover_nrao(
+            ra,
+            dec,
+            radius_arcmin=max(1.0, discovery_radius / 60.0),
+            max_rows=20,
+        ),
+    }
+
+    progress = st.progress(0, text="Starting archive queries...")
+    status_box = st.empty()
+
+    executor = ThreadPoolExecutor(max_workers=len(jobs))
+    future_map = {
+        executor.submit(func): label
+        for label, func in jobs.items()
+    }
+
+    done, not_done = wait(list(future_map.keys()), timeout=65)
+
+    all_results = []
+    completed = 0
+
+    for future in done:
+        label = future_map[future]
         try:
-            core_manifest, core_details = discover_archives(
-                ra, dec, discovery_radius
-            )
-            all_results.extend(core_details)
+            result = future.result()
         except Exception as exc:
-            all_results.append({
-                "archive": "Core archive discovery",
+            result = {
+                "archive": label,
                 "status": "ERROR",
                 "count": 0,
                 "summary": str(exc),
                 "details": [],
-            })
-
-        try:
-            all_results.append(
-                discover_dss(ra, dec, radius_arcmin=max(6.0, fov))
-            )
-        except Exception as exc:
-            all_results.append({
-                "archive": "DSS / photographic plates",
-                "status": "ERROR",
-                "count": 0,
-                "summary": str(exc),
-                "details": [],
-            })
-
-        try:
-            all_results.append(discover_dasch(ra, dec))
-        except Exception as exc:
-            all_results.append({
-                "archive": "Harvard DASCH",
-                "status": "ERROR",
-                "count": 0,
-                "summary": str(exc),
-                "details": [],
-            })
-
-        try:
-            all_results.append(
-                discover_nrao(
-                    ra,
-                    dec,
-                    radius_arcmin=max(1.0, discovery_radius / 60.0),
-                    max_rows=20,
-                )
-            )
-        except Exception as exc:
-            all_results.append({
-                "archive": "NRAO radio",
-                "status": "ERROR",
-                "count": 0,
-                "summary": str(exc),
-                "details": [],
-            })
-
-        all_manifest = pd.DataFrame([
-            {
-                "archive": item.get("archive", ""),
-                "status": item.get("status", ""),
-                "count": item.get("count", 0),
-                "summary": item.get("summary", ""),
             }
+
+        all_results.append(result)
+        completed += 1
+        progress.progress(
+            min(completed / len(jobs), 1.0),
+            text=f"Completed {completed} of {len(jobs)} archive queries",
+        )
+
+    for future in not_done:
+        label = future_map[future]
+        future.cancel()
+        all_results.append({
+            "archive": label,
+            "status": "TIMEOUT",
+            "count": 0,
+            "summary": (
+                "Archive did not complete within the unified FORGE search window. "
+                "Other archive results are shown normally."
+            ),
+            "details": [],
+        })
+
+    executor.shutdown(wait=False, cancel_futures=True)
+
+    preferred_order = {
+        "MAST": 0,
+        "SDSS spectroscopy": 1,
+        "IRSA": 2,
+        "ALMA": 3,
+        "DSS / photographic plates": 4,
+        "Harvard DASCH": 5,
+        "NRAO radio": 6,
+    }
+    all_results.sort(
+        key=lambda x: preferred_order.get(x.get("archive", ""), 99)
+    )
+
+    progress.progress(1.0, text="Unified archive search complete")
+    status_box.success(
+        f"Returned results from {len(done)} of {len(jobs)} archive services "
+        f"within the search window."
+    )
+
+    all_manifest = pd.DataFrame([
+        {
+            "archive": item.get("archive", ""),
+            "status": item.get("status", ""),
+            "count": item.get("count", 0),
+            "summary": item.get("summary", ""),
+        }
+        for item in all_results
+    ])
+
+    st.dataframe(all_manifest, use_container_width=True)
+
+    successful_records = int(
+        sum(
+            int(item.get("count", 0) or 0)
             for item in all_results
-        ])
-
-        st.dataframe(all_manifest, use_container_width=True)
-
-        total_available = int(
-            sum(
-                int(item.get("count", 0) or 0)
-                for item in all_results
-                if str(item.get("status", "")).upper() in {"OK", "TIMEOUT"}
-            )
+            if str(item.get("status", "")).upper() == "OK"
         )
-        st.caption(
-            f"Unified search completed across {len(all_results)} archive services/adapters · "
-            f"{total_available} returned records/layers in the current search windows. "
-            "Counts are archive-specific and should not be summed as unique astrophysical objects."
+    )
+    st.caption(
+        f"{successful_records} returned records/layers across completed archive queries. "
+        "Counts are archive-specific and are not unique astrophysical-object counts."
+    )
+
+    for item in all_results:
+        with st.expander(
+            f"{item.get('archive', 'Archive')} — {item.get('summary', '')}"
+        ):
+            details = item.get("details")
+            if details:
+                try:
+                    st.dataframe(pd.DataFrame(details), use_container_width=True)
+                except Exception:
+                    st.json(details)
+            else:
+                st.write("No additional records.")
+
+    try:
+        storage = build_storage(
+            storage_backend, storage_bucket, storage_prefix
         )
-
-        for item in all_results:
-            with st.expander(
-                f"{item.get('archive', 'Archive')} — {item.get('summary', '')}"
-            ):
-                details = item.get("details")
-                if details:
-                    try:
-                        st.dataframe(pd.DataFrame(details), use_container_width=True)
-                    except Exception:
-                        st.json(details)
-                else:
-                    st.write("No additional records.")
-
-        try:
-            storage = build_storage(
-                storage_backend, storage_bucket, storage_prefix
-            )
-            storage.save_json(
-                f"targets/{name}/all_archive_manifest.json",
-                {
-                    "target_name": name,
-                    "ra_deg": ra,
-                    "dec_deg": dec,
-                    "radius_arcsec": discovery_radius,
-                    "archives": all_results,
-                },
-            )
-        except Exception:
-            pass
+        storage.save_json(
+            f"targets/{name}/all_archive_manifest.json",
+            {
+                "target_name": name,
+                "ra_deg": ra,
+                "dec_deg": dec,
+                "radius_arcsec": discovery_radius,
+                "archives": all_results,
+            },
+        )
+    except Exception:
+        pass
 
 st.caption(
     "Search All Archives queries every observation-archive adapter currently integrated in FORGE. "
