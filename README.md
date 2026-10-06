@@ -418,36 +418,57 @@ The public-alpha goal is not feature completeness; it is to validate whether the
 
 The next development cycle is expected to focus on:
 
-1. **Richer Field Brief presentation**
+1. **Sky Context / Finder Charts (v0.13 candidate)**
+   - target-centered finder chart
+   - adjustable field of view
+   - target marker, coordinates, scale, and sky orientation
+   - standard survey background layer
+   - optional Gaia / 2MASS / SIMBAD overlays
+   - FORGE nearby-source and morphology overlays
+   - optional archive footprints where available
+   - exportable finder chart for the FORGE Field Brief
+   - optional “Open in Aladin” handoff
+
+2. **Richer Field Brief presentation**
    - PDF export
    - best-image / spectrum panels
    - stronger persistent provenance
    - optional public-facing brief pages beyond compact share links
 
-2. **Spectrum selection and explanation**
+3. **Spectrum selection and explanation**
    - choose among multiple archive spectra
    - instrument / wavelength-range summaries
    - atomic and molecular line identification
    - educational explanations
    - abundance context where scientifically supported
 
-3. **Unified source identity**
+4. **Unified source identity**
    - coordinate cross-matching across Gaia, 2MASS, APOGEE, SDSS, and related catalogs
    - match separation / confidence
    - one FORGE source card per astronomical object
 
-4. **Guided / Student Mode**
+5. **Guided / Student Mode**
    - clearer task progression for first-time users
    - simplified controls
    - instructional prompts
    - exportable classroom results
 
-5. **Archive-result cleanup**
+6. **Archive-result cleanup**
    - readable summary tables first
    - raw JSON / technical metadata retained under Advanced details
 
-6. **Radio spectral products**
+7. **Radio spectral products**
    - move from metadata triage toward actual spectral-cube / spectral-product visualization where archive services permit
+
+### Planned v0.13 — Sky Context / Finder Charts
+
+The planned Sky Context layer is intended to answer a simple question before deeper analysis:
+
+**Where is this target, and what is around it?**
+
+The first implementation should center on the active FORGE target and provide a finder chart with field-of-view control, target marking, coordinates, scale, and orientation. Later overlays may include Gaia, 2MASS, SIMBAD, FORGE-generated nearby targets, morphology regions, and archive footprints.
+
+FORGE should not attempt to replace Aladin. Aladin is the visual sky-navigation layer; FORGE supplies the investigation logic, evidence synthesis, and reproducible Field Brief.
 
 ## Demonstration science cases
 
