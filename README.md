@@ -23,10 +23,12 @@ Repository:
 The current public alpha supports:
 
 - coordinate-driven target selection
+- astronomical name resolution through SIMBAD / Sesame fallback
 - saved and reference targets
 - Gaia and 2MASS nearby-star suggestions
 - morphology-region suggestions
 - SDSS optical and 2MASS J/H/Ks visualization
+- unified **Search All Archives** workflow across every integrated observation-archive adapter
 - MAST multi-mission archive discovery
 - MAST preview imagery
 - real MAST 1-D spectrum discovery and plotting
@@ -76,6 +78,9 @@ The design principle is simple:
 
 The current Streamlit interface supports:
 
+- astronomical object-name / catalog-ID resolution to ICRS coordinates
+- canonical resolved identity and object type where available
+- one-click loading of resolved coordinates into the FORGE target
 - manual target name + RA / Dec entry
 - saved / reference target dropdown
 - persistent target library
@@ -105,6 +110,12 @@ FORGE currently produces two complementary suggestion classes.
 This intentionally separates **point-source science** from **morphology-region science**.
 
 ## Archive discovery
+
+### Unified archive search
+
+**Search All Archives** runs every currently integrated observation-archive adapter from the active target coordinates and returns one summary inventory. The current unified search includes MAST, SDSS spectroscopy, IRSA, ALMA, DSS / photographic surveys, Harvard DASCH, and NRAO radio discovery.
+
+Archive counts are intentionally presented as archive-specific records/layers rather than as one combined count of unique astrophysical objects. Gaia and 2MASS source-catalog matching remain part of target/source identity rather than being conflated with observation holdings.
 
 FORGE can currently query or inspect:
 
