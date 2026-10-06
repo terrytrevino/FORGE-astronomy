@@ -22,6 +22,15 @@ st.set_page_config(page_title="FORGE Astronomy", layout="wide")
 
 FORGE_PUBLIC_APP_URL = "https://forge-astronomy-rpjevm5zy6an8falnxcyvx.streamlit.app/"
 
+# Visitor-controlled appearance. Streamlit keeps the choice for the active session.
+appearance_mode = st.sidebar.radio(
+    "Appearance",
+    ["🌙 Dark", "☀ Light"],
+    horizontal=True,
+    key="forge_appearance",
+    help="Switch FORGE between observatory-dark and paper-light viewing modes.",
+)
+
 
 st.markdown(
         """
@@ -331,6 +340,114 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+# FORGE_LIGHT_MODE
+if appearance_mode == "☀ Light":
+    st.markdown(
+        """
+        <style>
+        html, body, [data-testid="stAppViewContainer"], .stApp {
+            background-color: #eef2f5 !important;
+            color: #172231 !important;
+        }
+
+        [data-testid="stAppViewContainer"] {
+            background:
+                radial-gradient(circle at 12% 18%, rgba(55,78,108,0.14) 0 1px, transparent 1.8px),
+                radial-gradient(circle at 58% 21%, rgba(65,86,118,0.12) 0 1px, transparent 1.8px),
+                radial-gradient(circle at 84% 16%, rgba(75,92,122,0.11) 0 1px, transparent 1.7px),
+                linear-gradient(180deg, #f7f8f9 0%, #edf1f4 48%, #e6ebef 100%) !important;
+            background-attachment: fixed !important;
+        }
+
+        .block-container {
+            background: rgba(250, 251, 252, 0.88) !important;
+            border: 1px solid rgba(55, 75, 100, 0.20) !important;
+            box-shadow: 0 10px 30px rgba(25, 40, 60, 0.08) !important;
+        }
+
+        section[data-testid="stSidebar"] {
+            background: rgba(239, 243, 247, 0.96) !important;
+            border-right: 1px solid rgba(55, 75, 100, 0.18) !important;
+        }
+
+        h1, h2, h3,
+        [data-testid="stMarkdownContainer"],
+        [data-testid="stMarkdownContainer"] p,
+        [data-testid="stMarkdownContainer"] li,
+        [data-testid="stWidgetLabel"],
+        section[data-testid="stSidebar"] label {
+            color: #172231 !important;
+        }
+
+        [data-testid="stCaptionContainer"],
+        [data-testid="stMarkdownContainer"] small {
+            color: #4d5f73 !important;
+        }
+
+        button[data-baseweb="tab"],
+        button[data-baseweb="tab"][aria-selected="false"] {
+            color: #43566c !important;
+        }
+
+        button[data-baseweb="tab"][aria-selected="true"] {
+            color: #12253b !important;
+        }
+
+        div[data-baseweb="input"] > div,
+        div[data-baseweb="select"] > div,
+        div[data-testid="stNumberInput"] input,
+        div[data-testid="stTextInput"] input,
+        section[data-testid="stSidebar"] div[data-baseweb="select"] > div,
+        section[data-testid="stFileUploaderDropzone"],
+        details[data-testid="stExpander"],
+        div[data-testid="stDataFrame"],
+        div[data-testid="stTable"] {
+            background-color: rgba(250, 251, 252, 0.96) !important;
+            color: #172231 !important;
+            border-color: rgba(60, 82, 108, 0.35) !important;
+        }
+
+        div[data-baseweb="input"] input,
+        div[data-baseweb="select"] span,
+        section[data-testid="stSidebar"] div[data-baseweb="select"] span,
+        section[data-testid="stFileUploaderDropzone"] small,
+        section[data-testid="stFileUploaderDropzone"] span {
+            color: #172231 !important;
+        }
+
+        div[data-baseweb="popover"] ul,
+        div[data-baseweb="popover"] li {
+            background-color: #f7f9fb !important;
+            color: #172231 !important;
+        }
+
+        div[data-baseweb="popover"] li:hover,
+        div[data-baseweb="popover"] li[aria-selected="true"] {
+            background-color: #dce7f2 !important;
+            color: #10243a !important;
+        }
+
+        .stButton > button,
+        .stDownloadButton > button {
+            background-color: #e4ebf2 !important;
+            color: #172231 !important;
+            border-color: rgba(48, 72, 102, 0.45) !important;
+        }
+
+        .stButton > button:hover,
+        .stDownloadButton > button:hover {
+            background-color: #d6e2ee !important;
+            border-color: #496d98 !important;
+        }
+
+        hr {
+            border-top-color: rgba(55, 75, 100, 0.28) !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 SDSS_URL = "https://skyserver.sdss.org/dr17/SkyServerWS/ImgCutout/getjpeg"
 SURVEYS = {"J": "2MASS-J", "H": "2MASS-H", "K": "2MASS-K"}
