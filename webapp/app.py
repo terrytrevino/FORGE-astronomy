@@ -698,7 +698,9 @@ if st.button("Search All Archives", type="primary"):
             ra,
             dec,
             radius_arcmin=max(1.0, discovery_radius / 60.0),
-            max_rows=20,
+            max_rows=12,
+            attempts=1,
+            read_timeout=12,
         ),
     }
 
@@ -795,18 +797,52 @@ if st.button("Search All Archives", type="primary"):
         "Counts are archive-specific and are not unique astrophysical-object counts."
     )
 
+    detail_columns = {
+        "MAST": ["mission", "count"],
+        "SDSS spectroscopy": ["ra", "dec", "plate", "mjd", "fiberID"],
+        "IRSA": ["catalog", "count"],
+        "ALMA": ["target_name", "band_list", "s_resolution"],
+        "DSS / photographic plates": ["survey", "available"],
+        "Harvard DASCH": ["series", "platenum", "date", "datetime", "exptime", "scanned"],
+        "NRAO radio": [
+            "target_name",
+            "instrument_name",
+            "dataproduct_type",
+            "freq_min",
+            "freq_max",
+            "nums_channels",
+            "spectral_resolutions",
+        ],
+    }
+
     for item in all_results:
         with st.expander(
             f"{item.get('archive', 'Archive')} — {item.get('summary', '')}"
         ):
-            details = item.get("details")
-            if details:
-                try:
-                    st.dataframe(pd.DataFrame(details), use_container_width=True)
-                except Exception:
-                    st.json(details)
-            else:
+            details = item.get("details") or []
+            if not details:
                 st.write("No additional records.")
+                continue
+
+            try:
+                ddf = pd.DataFrame(details)
+                wanted = [
+                    col for col in detail_columns.get(item.get("archive", ""), [])
+                    if col in ddf.columns
+                ]
+                compact = ddf[wanted].head(12) if wanted else ddf.head(12)
+                st.dataframe(compact, use_container_width=True)
+
+                if len(ddf) > len(compact):
+                    st.caption(
+                        f"Showing {len(compact)} representative row(s) from "
+                        f"{len(ddf)} returned detail row(s)."
+                    )
+
+                with st.expander("Advanced raw metadata"):
+                    st.json(details)
+            except Exception:
+                st.json(details)
 
     try:
         storage = build_storage(
@@ -830,40 +866,46 @@ st.caption(
     "Gaia and 2MASS source-catalog matching are handled separately under Suggested targets / source identity."
 )
 
-if st.button("Discover core archives", type="secondary"):
-    with st.spinner("Querying MAST, SDSS spectroscopy, IRSA, and ALMA..."):
-        try:
-            manifest, archive_details = discover_archives(
-                ra, dec, discovery_radius
-            )
-            st.dataframe(manifest, use_container_width=True)
-
-            for item in archive_details:
-                with st.expander(f"{item['archive']} — {item['summary']}"):
-                    if item.get("details"):
-                        st.json(item["details"])
-                    else:
-                        st.write("No additional records.")
-
+with st.expander("Advanced archive controls"):
+    st.caption(
+        "Use this only when you want to rerun the original core subset "
+        "(MAST, SDSS spectroscopy, IRSA, and ALMA) separately."
+    )
+    if st.button("Discover core archives", type="secondary"):
+        with st.spinner("Querying MAST, SDSS spectroscopy, IRSA, and ALMA..."):
             try:
-                storage = build_storage(
-                    storage_backend, storage_bucket, storage_prefix
+                manifest, archive_details = discover_archives(
+                    ra, dec, discovery_radius
                 )
-                storage.save_json(
-                    f"targets/{name}/archive_manifest.json",
-                    {
-                        "target_name": name,
-                        "ra_deg": ra,
-                        "dec_deg": dec,
-                        "radius_arcsec": discovery_radius,
-                        "archives": archive_details,
-                    },
-                )
-            except Exception:
-                pass
+                st.dataframe(manifest, use_container_width=True)
 
-        except Exception as exc:
-            st.error(f"Archive discovery failed: {exc}")
+                for item in archive_details:
+                    with st.expander(f"{item['archive']} — {item['summary']}"):
+                        if item.get("details"):
+                            st.json(item["details"])
+                        else:
+                            st.write("No additional records.")
+
+                try:
+                    storage = build_storage(
+                        storage_backend, storage_bucket, storage_prefix
+                    )
+                    storage.save_json(
+                        f"targets/{name}/archive_manifest.json",
+                        {
+                            "target_name": name,
+                            "ra_deg": ra,
+                            "dec_deg": dec,
+                            "radius_arcsec": discovery_radius,
+                            "archives": archive_details,
+                        },
+                    )
+                except Exception:
+                    pass
+
+            except Exception as exc:
+                st.error(f"Archive discovery failed: {exc}")
+
 
 
 st.subheader("MAST Preview Products")
