@@ -12,7 +12,7 @@ from astroquery.skyview import SkyView
 from storage import Storage, StorageConfig
 from archive_discovery import discover_archives, get_mast_preview_products
 from suggested_targets import suggest_compact_stars, suggest_compact_star_catalogs, suggest_morphology_regions
-from spectroscopy import fetch_sdss_spectrum, spectrum_dataframe, spectrum_figure
+from spectroscopy import fetch_sdss_spectrum, spectrum_dataframe, spectrum_figure, fetch_apogee_spectrum, apogee_spectrum_figure
 from radio_historical import discover_dss, discover_dasch, discover_nrao, classify_radio_spectral_candidates
 
 st.set_page_config(page_title="FORGE Orion", layout="wide")
@@ -731,8 +731,9 @@ st.caption(
 
 show_lines = st.checkbox("Show common line markers", value=True)
 
-spec_tab1, spec_tab2 = st.tabs([
-    "Current target spectrum",
+spec_tab1, spec_tab2, spec_tab3 = st.tabs([
+    "Current SDSS spectrum",
+    "Current APOGEE spectrum",
     "Known SDSS demo spectrum",
 ])
 
@@ -771,6 +772,37 @@ with spec_tab1:
                 )
 
 with spec_tab2:
+    st.write(
+        "Retrieve a real APOGEE DR17 combined H-band spectrum for the current target "
+        "when an APOGEE match exists."
+    )
+
+    if st.button("Plot current APOGEE spectrum", key="plot_current_apogee_spectrum"):
+        with st.spinner("Checking APOGEE DR17 and loading the combined H-band spectrum..."):
+            wave, flux, meta = fetch_apogee_spectrum(
+                ra_deg=ra,
+                dec_deg=dec,
+            )
+
+            if wave is None:
+                st.info(str(meta))
+            else:
+                fig = apogee_spectrum_figure(wave, flux)
+                st.pyplot(fig, use_container_width=True)
+
+                with st.expander("APOGEE spectrum metadata"):
+                    st.json(meta)
+
+                sdf = spectrum_dataframe(wave, flux)
+                st.download_button(
+                    "Download APOGEE spectrum CSV",
+                    sdf.to_csv(index=False).encode("utf-8"),
+                    file_name=f"{name}_apogee_spectrum.csv",
+                    mime="text/csv",
+                    key="download_apogee_spectrum",
+                )
+
+with spec_tab3:
     st.write(
         "Use this known SDSS example to confirm that FORGE can retrieve, plot, "
         "label, and export a real spectrum even when the current target has no SDSS spectrum."
@@ -931,5 +963,5 @@ if st.button("Acquire + Analyze", type="primary"):
 
 st.divider()
 st.caption(
-    "FORGE web app v0.9 — radio spectral-line triage + historical plates + multi-archive discovery."
+    "FORGE web app v0.10 — real APOGEE science-target spectra + radio spectral-line triage + multi-archive discovery."
 )
