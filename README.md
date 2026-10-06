@@ -2,11 +2,15 @@
 
 **FORGE = Field Observation, Retrieval, Generation, and Evaluation**
 
-FORGE is a coordinate-driven astronomy platform for discovering archival observations, retrieving multi-wavelength data, generating reproducible analysis products, and evaluating astronomical evidence across imaging, spectroscopy, morphology, historical archives, and radio datasets.
+FORGE is a coordinate-driven astronomy investigation platform.
+
+**FORGE turns any position on the sky into an evidence-based, multi-wavelength scientific investigation.** It discovers what humanity has observed at that location, retrieves and compares the available evidence, evaluates data quality, preserves provenance, and synthesizes the result into a shareable Field Brief.
+
+> **Catalogs identify objects. FORGE investigates the evidence around them.**
 
 FORGE began as an Orion molecular-cloud workflow in the NASA Fornax environment and has evolved into a public web-accessible research platform.
 
-> **See something interesting → locate it → ask what has observed it → generate evidence.**
+> **One coordinate → many archives → reproducible evidence → scientific story.**
 
 ## Current status
 
@@ -53,7 +57,7 @@ The current public alpha supports:
 - reproducible archive and analysis provenance
 
 
-FORGE remains an active research and software-development project. v0.11 is being treated as a functional checkpoint before the next feature cycle.
+FORGE remains an active research and software-development project. v0.12 is the current public-alpha checkpoint and introduces the shareable FORGE Field Brief workflow.
 
 ## Core workflow
 
@@ -73,6 +77,10 @@ Retrieve available imaging / spectra
 Analyze point source or local morphology
    ↓
 Compare wavelength regimes
+   ↓
+Synthesize the evidence
+   ↓
+Generate / share a FORGE Field Brief
    ↓
 Save figures, metadata, CSV / JSON, and provenance
 ```
@@ -122,7 +130,7 @@ This intentionally separates **point-source science** from **morphology-region s
 
 ### Unified archive search
 
-**Search All Archives** runs every currently integrated observation-archive adapter from the active target coordinates and returns one summary inventory. The current unified search includes MAST, SDSS spectroscopy, IRSA, ALMA, DSS / photographic surveys, Harvard DASCH, and NRAO radio discovery.
+**Search All Archives** runs the fast/reliable integrated observation-archive adapters from the active target coordinates and returns one summary inventory. The current unified search includes MAST, SDSS spectroscopy, IRSA, ALMA, DSS / photographic surveys, and Harvard DASCH. Extended NRAO radio discovery is intentionally kept separate so a slow external service cannot block the main workflow.
 
 Archive counts are intentionally presented as archive-specific records/layers rather than as one combined count of unique astrophysical objects. Gaia and 2MASS source-catalog matching remain part of target/source identity rather than being conflated with observation holdings.
 
@@ -245,6 +253,23 @@ FORGE includes:
 
 A key Orion result was that `target_01` lies in a substantially more asymmetric and structured local infrared background than the comparison targets, reinforcing the need to distinguish stellar measurements from environmental structure.
 
+## FORGE Field Brief
+
+The **FORGE Field Brief** is the record of an investigation: what was observed, what the evidence supports, where the data are uncertain, and what remains unknown.
+
+Current v0.12 capabilities:
+
+- synthesizes active target identity and coordinates
+- summarizes archive coverage
+- carries forward attached analysis and spectroscopy context
+- generates a Discovery Lens narrative from the assembled evidence
+- identifies unresolved questions and limitations
+- provides a downloadable Markdown brief
+- generates a compact shareable permalink
+- opens shared briefs without requiring the recipient to rerun the archive search
+
+The shared URL contains a compact synthesis and provenance summary rather than raw image or spectral data. Original archive products remain with their originating observatories and archives.
+
 ## Storage architecture
 
 FORGE is designed so the science workflow is not tied to one computer or cloud provider.
@@ -306,7 +331,7 @@ forge/
 
 ## Release engineering
 
-FORGE v0.11 now includes two GitHub Actions release gates:
+FORGE v0.12 uses two GitHub Actions release gates:
 
 - **Python application** — installs the web-app dependencies on Python 3.11 and 3.12, compiles the Python sources, installs the local package, and runs the smoke-test suite.
 - **Python package** — builds a source distribution and wheel, validates the distributions, installs the wheel, verifies the package version, and uploads the build artifacts.
@@ -359,9 +384,18 @@ See `RELEASE_CHECKLIST.md` for the team-release gate.
 - S3-compatible
 - saved manifests and analysis outputs
 
+**Milestone 8 — Shareable Field Brief**
+- evidence synthesis from the active investigation
+- archive inventory and provenance summary
+- spectroscopy / analysis status
+- “what remains unknown?” section
+- downloadable brief
+- shareable permalink that opens without rerunning the investigation
+- session-milestone persistence for saved/reference targets
+
 ## Team / professor evaluation
 
-FORGE Web v0.11 is now suitable for limited team and faculty evaluation as a **public alpha**.
+FORGE Web v0.12 is suitable for limited team and faculty evaluation as a **public alpha**.
 
 Recommended evaluation loop:
 
@@ -384,12 +418,11 @@ The public-alpha goal is not feature completeness; it is to validate whether the
 
 The next development cycle is expected to focus on:
 
-1. **FORGE Field Brief**
-   - shareable web permalink
+1. **Richer Field Brief presentation**
    - PDF export
    - best-image / spectrum panels
-   - persistent brief provenance
-   - “what remains unknown?” synthesis
+   - stronger persistent provenance
+   - optional public-facing brief pages beyond compact share links
 
 2. **Spectrum selection and explanation**
    - choose among multiple archive spectra
@@ -403,8 +436,8 @@ The next development cycle is expected to focus on:
    - match separation / confidence
    - one FORGE source card per astronomical object
 
-4. **Student Mode**
-   - guided workflow
+4. **Guided / Student Mode**
+   - clearer task progression for first-time users
    - simplified controls
    - instructional prompts
    - exportable classroom results
@@ -522,4 +555,4 @@ A software license will be selected before the first stable public release.
 
 ---
 
-**Checkpoint:** FORGE Web v0.12 public alpha — professor/team evaluation build — October 6, 2026.
+**Checkpoint:** FORGE Web v0.12 public alpha — shareable Field Brief / professor-team evaluation build — October 6, 2026.
