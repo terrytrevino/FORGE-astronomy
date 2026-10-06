@@ -206,3 +206,90 @@ def discover_nrao(ra_deg, dec_deg, radius_arcmin=60.0, max_rows=20):
     except Exception as exc:
         out.update(status="ERROR", summary=str(exc))
         return out
+
+
+def _numbers_from_text(value):
+    """Extract finite numeric tokens from scalar/list-like archive metadata."""
+    import re
+    if value is None:
+        return []
+    text = str(value)
+    vals = []
+    for token in re.findall(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?", text):
+        try:
+            vals.append(float(token))
+        except Exception:
+            pass
+    return vals
+
+
+def classify_radio_spectral_candidates(details):
+    """
+    Rank NRAO/ALMA archive rows for likely spectral-line usefulness.
+
+    This is metadata triage only. A 'likely spectral' label does NOT confirm
+    that an astrophysical line is detected; it identifies observations whose
+    channelization/product metadata make line analysis plausible.
+    """
+    rows = []
+
+    for item in details or []:
+        channels = _numbers_from_text(item.get("nums_channels"))
+        max_channels = max(channels) if channels else 0
+
+        spectral_res = _numbers_from_text(item.get("spectral_resolutions"))
+        has_spectral_res = len(spectral_res) > 0
+
+        dtype = str(item.get("dataproduct_type", "")).lower()
+        instrument = str(item.get("instrument_name", ""))
+        target = str(item.get("target_name", ""))
+
+        score = 0
+        reasons = []
+
+        if "cube" in dtype or "spectrum" in dtype:
+            score += 4
+            reasons.append(f"product type={dtype}")
+
+        if max_channels >= 1024:
+            score += 4
+            reasons.append(f"high channel count ({int(max_channels)})")
+        elif max_channels >= 128:
+            score += 2
+            reasons.append(f"multi-channel data ({int(max_channels)})")
+        elif max_channels > 1:
+            score += 1
+            reasons.append(f"channelized data ({int(max_channels)})")
+
+        if has_spectral_res:
+            score += 2
+            reasons.append("spectral-resolution metadata present")
+
+        label = "LIKELY SPECTRAL" if score >= 5 else "POSSIBLE" if score >= 2 else "CONTINUUM / UNCLEAR"
+
+        rows.append({
+            "target_name": target,
+            "instrument": instrument,
+            "data_product": item.get("dataproduct_type", ""),
+            "max_channels": int(max_channels) if max_channels else 0,
+            "spectral_resolution_metadata": item.get("spectral_resolutions", ""),
+            "frequency_min": item.get("freq_min", ""),
+            "frequency_max": item.get("freq_max", ""),
+            "classification": label,
+            "triage_score": score,
+            "why": "; ".join(reasons) if reasons else "insufficient spectral metadata",
+            "access_url": item.get("access_url", ""),
+        })
+
+    df = pd.DataFrame(rows)
+    if df.empty:
+        return df
+
+    order = {"LIKELY SPECTRAL": 0, "POSSIBLE": 1, "CONTINUUM / UNCLEAR": 2}
+    df["_order"] = df["classification"].map(order).fillna(3)
+    df = df.sort_values(
+        by=["_order", "triage_score", "max_channels"],
+        ascending=[True, False, False],
+    ).drop(columns=["_order"])
+
+    return df
