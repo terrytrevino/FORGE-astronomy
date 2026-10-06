@@ -697,10 +697,11 @@ if st.button("Search All Archives", type="primary"):
         "NRAO radio": lambda: discover_nrao(
             ra,
             dec,
-            radius_arcmin=max(1.0, discovery_radius / 60.0),
-            max_rows=12,
+            radius_arcmin=max(5.0, discovery_radius / 60.0),
+            max_rows=8,
             attempts=1,
-            read_timeout=12,
+            read_timeout=8,
+            fast_mode=True,
         ),
     }
 
