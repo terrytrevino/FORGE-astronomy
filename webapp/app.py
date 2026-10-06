@@ -16,6 +16,7 @@ from suggested_targets import suggest_compact_stars, suggest_compact_star_catalo
 from spectroscopy import fetch_sdss_spectrum, spectrum_dataframe, spectrum_figure, fetch_apogee_spectrum, apogee_spectrum_figure, apogee_feature_guide, apogee_quality_summary, fetch_mast_spectrum_product, generic_spectrum_figure
 from radio_historical import discover_dss, discover_dasch, discover_nrao, discover_casda, get_dss_preview, classify_radio_spectral_candidates
 from name_resolver import resolve_object_name
+from field_brief import archive_inventory_dataframe, discovery_lens_text, unknowns_list, brief_markdown
 
 st.set_page_config(page_title="FORGE Orion", layout="wide")
 
@@ -845,6 +846,7 @@ if st.button("Search All Archives", type="primary"):
         }
         for item in all_results
     ])
+    st.session_state["forge_field_brief_archives"] = all_results
 
     st.dataframe(all_manifest, use_container_width=True)
 
@@ -1269,6 +1271,11 @@ with spec_tab1:
                     show_lines=show_lines,
                 )
                 st.pyplot(fig, use_container_width=True)
+                st.session_state["forge_field_brief_spectrum"] = {
+                    "label": "SDSS optical spectrum",
+                    "archive": "SDSS spectroscopy",
+                    "note": "Real archive spectrum retrieved for the active target coordinates.",
+                }
 
                 with st.expander("Spectrum metadata"):
                     st.json(meta)
@@ -1312,6 +1319,11 @@ with spec_tab2:
                     show_quality=True,
                 )
                 st.pyplot(fig, use_container_width=True)
+                st.session_state["forge_field_brief_spectrum"] = {
+                    "label": "APOGEE DR17 H-band spectrum",
+                    "archive": "SDSS APOGEE DR17",
+                    "note": "Real APOGEE spectrum retrieved; FORGE overlays representative line references and quality/spike triage.",
+                }
 
                 st.caption(
                     "Dashed vertical markers identify representative APOGEE H-band atomic fingerprints. "
@@ -1394,6 +1406,11 @@ with spec_tab3:
                         show_lines=show_lines,
                     )
                     st.pyplot(fig, use_container_width=True)
+                    st.session_state["forge_field_brief_spectrum"] = {
+                        "label": f"MAST spectrum — {title}",
+                        "archive": product.get("obs_collection", "MAST"),
+                        "note": "Real MAST spectral product parsed into a 1-D wavelength/flux spectrum.",
+                    }
 
                     with st.expander("MAST spectrum product metadata"):
                         st.json({**product, **meta})
@@ -1541,17 +1558,20 @@ if st.button("Acquire + Analyze", type="primary"):
             result_df = pd.DataFrame(rows)
             st.dataframe(result_df, use_container_width=True)
 
+            analysis_payload = {
+                "target_name": name,
+                "mode": mode,
+                "ra_deg": ra,
+                "dec_deg": dec,
+                "field_of_view_arcmin": fov,
+                "morphology": rows,
+            }
+            st.session_state["forge_field_brief_analysis"] = analysis_payload
+
             if storage is not None:
                 storage.save_json(
                     f"targets/{name}/analysis.json",
-                    {
-                        "target_name": name,
-                        "mode": mode,
-                        "ra_deg": ra,
-                        "dec_deg": dec,
-                        "field_of_view_arcmin": fov,
-                        "morphology": rows,
-                    },
+                    analysis_payload,
                 )
         else:
             st.info("No usable 2MASS data for morphology analysis.")
@@ -1563,18 +1583,97 @@ if st.button("Acquire + Analyze", type="primary"):
             "Catalog colors and calibrated point-source photometry are the next integration."
         )
 
+        analysis_payload = {
+            "target_name": name,
+            "mode": mode,
+            "ra_deg": ra,
+            "dec_deg": dec,
+            "field_of_view_arcmin": fov,
+        }
+        st.session_state["forge_field_brief_analysis"] = analysis_payload
+
         if storage is not None:
             storage.save_json(
                 f"targets/{name}/analysis.json",
-                {
-                    "target_name": name,
-                    "mode": mode,
-                    "ra_deg": ra,
-                    "dec_deg": dec,
-                    "field_of_view_arcmin": fov,
-                },
+                analysis_payload,
             )
 
+
+st.divider()
+st.subheader("FORGE Field Brief")
+st.caption(
+    "One-page synthesis of the active target: identity, archive coverage, analysis, spectroscopy, provenance, and open questions."
+)
+
+brief_archives = st.session_state.get("forge_field_brief_archives", [])
+brief_analysis = st.session_state.get("forge_field_brief_analysis")
+brief_spectrum = st.session_state.get("forge_field_brief_spectrum")
+
+brief_ready = bool(brief_archives or brief_analysis or brief_spectrum)
+
+if not brief_ready:
+    st.info(
+        "Run Search All Archives, Acquire + Analyze, or retrieve a spectrum first. "
+        "FORGE will assemble the evidence you generate into this brief."
+    )
+else:
+    bcol1, bcol2 = st.columns([1.25, 1], gap="large")
+
+    with bcol1:
+        st.markdown(f"### {name}")
+        st.write(f"**RA:** {ra:.6f}°   **Dec:** {dec:.6f}°")
+
+        inv = archive_inventory_dataframe(brief_archives)
+        if not inv.empty:
+            st.markdown("**Archive inventory**")
+            st.dataframe(inv, use_container_width=True, hide_index=True)
+
+        st.markdown("**Discovery Lens**")
+        st.write(
+            discovery_lens_text(
+                brief_archives,
+                brief_analysis,
+                brief_spectrum,
+            )
+        )
+
+    with bcol2:
+        st.markdown("**Evidence attached to this brief**")
+        st.write(
+            f"- Archive search: {'Yes' if brief_archives else 'Not yet'}\n"
+            f"- Analysis: {'Yes — ' + brief_analysis.get('mode', '') if brief_analysis else 'Not yet'}\n"
+            f"- Spectrum: {brief_spectrum.get('label', 'Yes') if brief_spectrum else 'Not yet'}"
+        )
+
+        st.markdown("**What remains unknown?**")
+        for unknown in unknowns_list(
+            brief_archives,
+            brief_analysis,
+            brief_spectrum,
+        ):
+            st.write(f"- {unknown}")
+
+    brief_md = brief_markdown(
+        name,
+        ra,
+        dec,
+        results=brief_archives,
+        analysis=brief_analysis,
+        spectrum=brief_spectrum,
+    )
+
+    st.download_button(
+        "Download Field Brief",
+        brief_md.encode("utf-8"),
+        file_name=f"{name}_FORGE_Field_Brief.md",
+        mime="text/markdown",
+        use_container_width=True,
+    )
+
+    st.caption(
+        "Field Brief v0.1 is evidence-driven from the current FORGE session. "
+        "Shareable web/PDF briefs and richer image/spectrum panels are the next iteration."
+    )
 
 st.divider()
 st.markdown(
