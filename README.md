@@ -54,6 +54,7 @@ The current public alpha supports:
 - local and S3-compatible project storage
 - downloadable CSV / JSON analysis products
 - responsive / narrow-screen layout improvements
+- visitor-controlled Light / Dark appearance modes for different viewing environments
 - reproducible archive and analysis provenance
 
 
