@@ -1024,6 +1024,8 @@ with radio_col:
                 dec,
                 radius_arcmin=max(1.0, discovery_radius / 60.0),
                 max_rows=20,
+                attempts=2,
+                read_timeout=45,
             )
 
             st.dataframe(
