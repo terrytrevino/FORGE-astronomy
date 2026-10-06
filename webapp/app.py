@@ -13,6 +13,7 @@ from storage import Storage, StorageConfig
 from archive_discovery import discover_archives, get_mast_preview_products
 from suggested_targets import suggest_compact_stars, suggest_compact_star_catalogs, suggest_morphology_regions
 from spectroscopy import fetch_sdss_spectrum, spectrum_dataframe, spectrum_figure
+from radio_historical import discover_dss, discover_dasch, discover_nrao
 
 st.set_page_config(page_title="FORGE Orion", layout="wide")
 
@@ -641,6 +642,68 @@ if st.button("Show MAST previews"):
 
 st.divider()
 
+
+st.subheader("Historical + Radio Discovery")
+st.caption(
+    "Check photographic plate history and radio-archive coverage around the current field."
+)
+
+hist_col, radio_col = st.columns(2)
+
+with hist_col:
+    if st.button("Discover historical plates"):
+        with st.spinner("Checking DSS and Harvard DASCH..."):
+            dss_result = discover_dss(ra, dec, radius_arcmin=max(6.0, fov))
+            dasch_result = discover_dasch(ra, dec)
+
+            hist_df = pd.DataFrame([
+                {
+                    "archive": dss_result["archive"],
+                    "status": dss_result["status"],
+                    "count": dss_result["count"],
+                    "summary": dss_result["summary"],
+                },
+                {
+                    "archive": dasch_result["archive"],
+                    "status": dasch_result["status"],
+                    "count": dasch_result["count"],
+                    "summary": dasch_result["summary"],
+                },
+            ])
+            st.dataframe(hist_df, use_container_width=True)
+
+            with st.expander("DSS layers"):
+                st.json(dss_result.get("details", []))
+
+            with st.expander("DASCH plate exposures"):
+                st.json(dasch_result.get("details", []))
+
+with radio_col:
+    if st.button("Discover NRAO radio"):
+        with st.spinner("Querying NRAO VLA / VLBA / GBT / ALMA metadata..."):
+            nrao_result = discover_nrao(
+                ra,
+                dec,
+                radius_arcmin=max(1.0, discovery_radius / 60.0),
+                max_rows=20,
+            )
+
+            st.dataframe(
+                pd.DataFrame([
+                    {
+                        "archive": nrao_result["archive"],
+                        "status": nrao_result["status"],
+                        "count": nrao_result["count"],
+                        "summary": nrao_result["summary"],
+                    }
+                ]),
+                use_container_width=True,
+            )
+
+            with st.expander("Radio observation details"):
+                st.json(nrao_result.get("details", []))
+
+st.divider()
 st.subheader("Spectroscopy")
 st.caption(
     "Check for a spectrum at the current coordinate, or use a known SDSS example "
@@ -849,5 +912,5 @@ if st.button("Acquire + Analyze", type="primary"):
 
 st.divider()
 st.caption(
-    "FORGE web app v0.7 — parallel 2MASS/Gaia discovery + high-contrast dark UI + spectroscopy."
+    "FORGE web app v0.8 — historical plates + NRAO radio + parallel 2MASS/Gaia + spectroscopy."
 )
