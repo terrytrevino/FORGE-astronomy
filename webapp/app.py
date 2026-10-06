@@ -390,27 +390,93 @@ def build_storage(backend, bucket, prefix):
 
 st.markdown(
     """
-    <div style="
-        padding: 2.2rem 2.4rem 2rem 2.4rem;
+    <style>
+    .forge-hero {
+        position: relative;
+        min-height: 330px;
         border-radius: 22px;
-        margin-bottom: 1.2rem;
-        border: 1px solid rgba(140,170,255,0.18);
-        background:
-            radial-gradient(circle at 18% 35%, rgba(100,120,255,0.24), transparent 24%),
-            radial-gradient(circle at 78% 28%, rgba(130,80,220,0.20), transparent 26%),
-            radial-gradient(circle at 58% 82%, rgba(70,150,255,0.14), transparent 30%),
-            linear-gradient(135deg, #09111d 0%, #0c1b30 55%, #111827 100%);
-    ">
-      <div style="font-size:2.3rem;font-weight:700;color:#f3f7fb;margin-bottom:0.35rem;">
-        FORGE Astronomy
+        overflow: hidden;
+        margin-bottom: 0.55rem;
+        border: 1px solid rgba(180,210,255,0.30);
+        background-image:
+            linear-gradient(90deg, rgba(2,7,15,0.86) 0%, rgba(2,7,15,0.58) 43%, rgba(2,7,15,0.18) 100%),
+            linear-gradient(0deg, rgba(2,7,15,0.56) 0%, rgba(2,7,15,0.05) 58%),
+            url("https://science.nasa.gov/wp-content/uploads/2023/04/orion-nebula-xlarge_web-jpg.webp");
+        background-size: cover;
+        background-position: center 48%;
+        box-shadow: 0 14px 42px rgba(0,0,0,0.34);
+    }
+
+    .forge-hero-content {
+        position: absolute;
+        left: 2.3rem;
+        bottom: 2.0rem;
+        max-width: 760px;
+        padding-right: 1.5rem;
+        text-shadow: 0 2px 12px rgba(0,0,0,0.82);
+    }
+
+    .forge-hero-title {
+        font-size: 2.55rem;
+        line-height: 1.02;
+        font-weight: 760;
+        color: #ffffff;
+        margin-bottom: 0.45rem;
+        letter-spacing: 0.01em;
+    }
+
+    .forge-hero-subtitle {
+        font-size: 1.08rem;
+        color: #e7eef9;
+        margin-bottom: 0.72rem;
+        font-weight: 600;
+    }
+
+    .forge-hero-tagline {
+        font-size: 0.98rem;
+        line-height: 1.45;
+        color: #d7e3f3;
+        max-width: 700px;
+    }
+
+    .forge-hero-credit {
+        margin: 0.15rem 0 1.15rem 0;
+        font-size: 0.72rem;
+        color: #aebed3;
+        opacity: 0.92;
+        text-align: right;
+    }
+
+    @media (max-width: 780px) {
+        .forge-hero {
+            min-height: 300px;
+            background-position: 48% center;
+        }
+        .forge-hero-content {
+            left: 1.25rem;
+            bottom: 1.35rem;
+            padding-right: 1rem;
+        }
+        .forge-hero-title {
+            font-size: 2rem;
+        }
+    }
+    </style>
+
+    <div class="forge-hero" role="img" aria-label="Hubble mosaic of the Orion Nebula, M42">
+      <div class="forge-hero-content">
+        <div class="forge-hero-title">FORGE Astronomy</div>
+        <div class="forge-hero-subtitle">
+          Field Observation, Retrieval, Generation, and Evaluation
+        </div>
+        <div class="forge-hero-tagline">
+          One coordinate → many archives → imaging, spectra, morphology, history, and reproducible evidence.
+        </div>
       </div>
-      <div style="font-size:1.02rem;color:#c8d3e3;margin-bottom:0.75rem;">
-        Field Observation, Retrieval, Generation, and Evaluation
-      </div>
-      <div style="font-size:0.95rem;color:#9fb2cc;max-width:900px;">
-        Multi-wavelength archive discovery, target selection, spectroscopy, morphology,
-        and reproducible astronomical analysis.
-      </div>
+    </div>
+    <div class="forge-hero-credit">
+      M42 — Hubble Space Telescope Orion Treasury mosaic ·
+      NASA / ESA / M. Robberto (STScI/ESA) / HST Orion Treasury Project Team
     </div>
     """,
     unsafe_allow_html=True,
