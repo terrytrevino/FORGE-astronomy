@@ -265,9 +265,9 @@ SDSS_URL = "https://skyserver.sdss.org/dr17/SkyServerWS/ImgCutout/getjpeg"
 SURVEYS = {"J": "2MASS-J", "H": "2MASS-H", "K": "2MASS-K"}
 
 KNOWN_TARGETS = {
-    "target_01": {"ra": 83.806016, "dec": -5.394502, "label": "APOGEE / Orion reference"},
-    "target_02": {"ra": 83.833500, "dec": -5.427083, "label": "APOGEE / Orion reference"},
-    "target_03": {"ra": 83.809458, "dec": -5.406833, "label": "APOGEE / Orion reference"},
+    "target_01": {"ra": 83.806016, "dec": -5.394502, "label": "APOGEE / Orion reference", "apogee_id": "2M05351344-0523402"},
+    "target_02": {"ra": 83.833500, "dec": -5.427083, "label": "APOGEE / Orion reference", "apogee_id": "2M05352004-0525375"},
+    "target_03": {"ra": 83.809458, "dec": -5.406833, "label": "APOGEE / Orion reference", "apogee_id": "2M05351427-0524246"},
 }
 
 
@@ -779,7 +779,12 @@ with spec_tab2:
 
     if st.button("Plot current APOGEE spectrum", key="plot_current_apogee_spectrum"):
         with st.spinner("Checking APOGEE DR17 and loading the combined H-band spectrum..."):
+            known_apogee_id = None
+            if selected_target in KNOWN_TARGETS:
+                known_apogee_id = KNOWN_TARGETS[selected_target].get("apogee_id")
+
             wave, flux, meta = fetch_apogee_spectrum(
+                apogee_id=known_apogee_id,
                 ra_deg=ra,
                 dec_deg=dec,
             )
