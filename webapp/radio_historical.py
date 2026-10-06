@@ -1,6 +1,7 @@
 import csv
 import io
 import requests
+import time
 import pandas as pd
 import astropy.units as u
 from astropy.coordinates import SkyCoord
@@ -120,8 +121,8 @@ def discover_dasch(ra_deg, dec_deg, max_rows=12):
         return out
 
 
-def discover_nrao(ra_deg, dec_deg, radius_arcmin=60.0, max_rows=20):
-    """Query the NRAO VO/TAP archive around a coordinate."""
+def discover_nrao(ra_deg, dec_deg, radius_arcmin=60.0, max_rows=20, attempts=2):
+    """Query the NRAO VO/TAP archive with fast timeout/retry behavior."""
     out = {
         "archive": "NRAO radio",
         "status": "OK",
@@ -130,83 +131,107 @@ def discover_nrao(ra_deg, dec_deg, radius_arcmin=60.0, max_rows=20):
         "details": [],
     }
 
-    try:
-        service = pyvo.dal.TAPService(NRAO_TAP)
+    radius_deg = float(radius_arcmin) / 60.0
+    query = f"""
+    SELECT TOP {int(max_rows)}
+        s_ra,
+        s_dec,
+        target_name,
+        instrument_name,
+        dataproduct_type,
+        obs_publisher_did,
+        freq_min,
+        freq_max,
+        center_frequencies,
+        bandwidths,
+        nums_channels,
+        spectral_resolutions,
+        aggregate_bandwidth,
+        t_min,
+        t_max,
+        access_url
+    FROM ivoa.obscore
+    WHERE 1=CONTAINS(
+        POINT('ICRS', s_ra, s_dec),
+        CIRCLE('ICRS', {float(ra_deg)}, {float(dec_deg)}, {radius_deg})
+    )
+    """
 
-        radius_deg = float(radius_arcmin) / 60.0
-        query = f"""
-        SELECT TOP {int(max_rows)}
-            s_ra,
-            s_dec,
-            target_name,
-            instrument_name,
-            dataproduct_type,
-            obs_publisher_did,
-            freq_min,
-            freq_max,
-            center_frequencies,
-            bandwidths,
-            nums_channels,
-            spectral_resolutions,
-            aggregate_bandwidth,
-            t_min,
-            t_max,
-            access_url
-        FROM ivoa.obscore
-        WHERE 1=CONTAINS(
-            POINT('ICRS', s_ra, s_dec),
-            CIRCLE('ICRS', {float(ra_deg)}, {float(dec_deg)}, {radius_deg})
-        )
-        """
+    last_error = None
 
-        table = service.search(query).to_table()
-        out["count"] = int(len(table))
+    for attempt in range(attempts):
+        try:
+            service = pyvo.dal.TAPService(NRAO_TAP)
 
-        if len(table) == 0:
-            out["summary"] = "No NRAO archive matches"
+            # Prefer async execution to avoid a long blocking /tap/sync call.
+            job = service.submit_job(query)
+            job.run()
+            job.wait(phases=["COMPLETED", "ERROR", "ABORTED"], timeout=25)
+
+            if job.phase != "COMPLETED":
+                raise RuntimeError(f"NRAO TAP job ended with phase {job.phase}")
+
+            table = job.fetch_result().to_table()
+            out["count"] = int(len(table))
+
+            if len(table) == 0:
+                out["summary"] = "No NRAO archive matches"
+                return out
+
+            instruments = []
+            if "instrument_name" in table.colnames:
+                instruments = sorted(
+                    set(str(x) for x in table["instrument_name"] if str(x).strip())
+                )
+
+            details = []
+            for row in table:
+                item = {}
+                for key in [
+                    "target_name",
+                    "instrument_name",
+                    "dataproduct_type",
+                    "obs_publisher_did",
+                    "freq_min",
+                    "freq_max",
+                    "center_frequencies",
+                    "bandwidths",
+                    "nums_channels",
+                    "spectral_resolutions",
+                    "aggregate_bandwidth",
+                    "t_min",
+                    "t_max",
+                    "access_url",
+                ]:
+                    if key in table.colnames:
+                        try:
+                            item[key] = str(row[key])
+                        except Exception:
+                            pass
+                details.append(item)
+
+            out["details"] = details
+            out["summary"] = (
+                f"{len(table)} radio match(es)"
+                + (f" — {', '.join(instruments[:6])}" if instruments else "")
+            )
             return out
 
-        instruments = []
-        if "instrument_name" in table.colnames:
-            instruments = sorted(set(str(x) for x in table["instrument_name"] if str(x).strip()))
+        except Exception as exc:
+            last_error = exc
+            if attempt < attempts - 1:
+                time.sleep(1.5)
 
-        details = []
-        for row in table:
-            item = {}
-            for key in [
-                "target_name",
-                "instrument_name",
-                "dataproduct_type",
-                "obs_publisher_did",
-                "freq_min",
-                "freq_max",
-                "center_frequencies",
-                "bandwidths",
-                "nums_channels",
-                "spectral_resolutions",
-                "aggregate_bandwidth",
-                "t_min",
-                "t_max",
-                "access_url",
-            ]:
-                if key in table.colnames:
-                    try:
-                        item[key] = str(row[key])
-                    except Exception:
-                        pass
-            details.append(item)
-
-        out["details"] = details
-        out["summary"] = (
-            f"{len(table)} radio match(es)"
-            + (f" — {', '.join(instruments[:6])}" if instruments else "")
-        )
-        return out
-
-    except Exception as exc:
-        out.update(status="ERROR", summary=str(exc))
-        return out
-
+    out["status"] = "TIMEOUT"
+    out["summary"] = (
+        "NRAO archive did not respond in time. "
+        "FORGE stopped the query rather than leaving the app spinning."
+    )
+    out["details"] = [{
+        "error": str(last_error) if last_error else "Unknown NRAO timeout",
+        "retry_count": attempts,
+    }]
+    return out
 
 def _numbers_from_text(value):
     """Extract finite numeric tokens from scalar/list-like archive metadata."""
