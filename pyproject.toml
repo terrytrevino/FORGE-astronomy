@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "forge-astronomy"
-version = "0.11.0"
+version = "0.12.0"
 description = "Field Observation, Retrieval, Generation, and Evaluation for coordinate-driven astronomy workflows"
 readme = "README.md"
 requires-python = ">=3.11"
