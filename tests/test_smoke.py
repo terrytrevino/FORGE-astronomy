@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_package_version():
-    assert forge_astronomy.__version__ == "0.11.0"
+    assert forge_astronomy.__version__ == "0.12.0"
 
 
 def test_webapp_python_sources_parse():
