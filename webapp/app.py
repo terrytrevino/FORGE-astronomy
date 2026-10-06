@@ -235,6 +235,38 @@ st.markdown(
 )
 
 
+
+# FORGE_MOBILE_LAYOUT
+st.markdown(
+    """
+    <style>
+    /* Improve readability and stacking on phones / narrow browser windows. */
+    @media (max-width: 780px) {
+        .block-container {
+            padding-left: 0.8rem !important;
+            padding-right: 0.8rem !important;
+            border-radius: 12px !important;
+        }
+
+        .stButton > button,
+        .stDownloadButton > button {
+            width: 100% !important;
+            min-height: 2.7rem !important;
+        }
+
+        [data-testid="stDataFrame"] {
+            overflow-x: auto !important;
+        }
+
+        h1 { font-size: 1.75rem !important; }
+        h2 { font-size: 1.35rem !important; }
+        h3 { font-size: 1.12rem !important; }
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 # FORGE_TRANSPARENT_SURFACES
 st.markdown(
     """
@@ -948,10 +980,12 @@ st.caption(
     "Check photographic plate history and radio-archive coverage around the current field."
 )
 
-hist_col, radio_col = st.columns(2)
+hist_col, radio_col = st.columns(2, gap="large")
 
 with hist_col:
-    if st.button("Discover historical plates"):
+    st.markdown("**Historical sky**")
+    st.caption("DSS / DSS2 imagery and Harvard DASCH plate coverage.")
+    if st.button("Discover historical plates", use_container_width=True):
         with st.spinner("Checking DSS and Harvard DASCH..."):
             dss_result = discover_dss(ra, dec, radius_arcmin=max(6.0, fov))
             dasch_result = discover_dasch(ra, dec)
@@ -979,11 +1013,11 @@ with hist_col:
                 st.json(dasch_result.get("details", []))
 
 with radio_col:
+    st.markdown("**Deep radio**")
     st.caption(
-        "NRAO is queried separately because its TAP service can respond slowly. "
-        "A timeout here does not indicate a FORGE failure."
+        "NRAO VLA / VLBA / GBT / ALMA metadata. Slow service responses are isolated from the main search."
     )
-    if st.button("Deep NRAO radio search"):
+    if st.button("Deep NRAO radio search", use_container_width=True):
         with st.spinner("Running deeper NRAO VLA / VLBA / GBT / ALMA metadata search..."):
             nrao_result = discover_nrao(
                 ra,
